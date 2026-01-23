@@ -1,8 +1,6 @@
 
-// Import the fetch function for making HTTP requests
-import fetch from 'node-fetch';
 // Import GitHub token from environment configuration
-import { GITHUB_TOKEN } from './env';
+import { GITHUB_TOKEN } from './env.js';
 
 // Define the GitHub username to fetch repositories for
 export const githubUsername = 'swappycode';

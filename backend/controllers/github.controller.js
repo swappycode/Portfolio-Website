@@ -4,13 +4,14 @@
  */
 
 // Import the GitHub repository data fetching function and username
+import { GITHUB_TOKEN } from "../config/env.js";
 import gitRepoData, { githubUsername } from "../config/github.js";
 
 
  //Get list of portfolio projects from GitHub repositories
  // Filters repositories that are not forks and have "portfolio" topic
 
-export const List = async (req, res, next) => {
+export const gList = async (req, res, next) => {
     try {
         // Fetch all repositories from GitHub API
         const { githubUsername, data: repositories } = await gitRepoData();
@@ -48,6 +49,52 @@ export const List = async (req, res, next) => {
         console.error('Error fetching portfolio projects:', error.message);
 
         // Pass the error to the next middleware for centralized error handling
+        next(error);
+    }
+};
+
+
+export const gDetail = async (req, res, next) => {
+    try {
+        const { githubUsername, data: repositories } = await gitRepoData();
+        const repoName = req.params.name;
+        const repoData = repositories.find(repo => repo.name === repoName);
+
+        if (!repoData) {
+            const error = new Error('Unable to find the repository');
+            error.status = 404
+            throw error
+        }
+
+        const readmeResponse = await fetch(`https://api.github.com/repos/${githubUsername}/${repoName}/readme`, {
+            headers: {
+                Authorization: `Bearer ${GITHUB_TOKEN}`,
+                Accept: "application/vnd.github+json"
+            }
+        });
+
+        let readmeContent = "";
+        if (readmeResponse.ok) {
+            const readmeData = await readmeResponse.json();
+            readmeContent = Buffer
+                .from(readmeData.content, "base64")
+                .toString("utf-8");
+        }
+
+        res.status(200).json({
+            name: repoData.name,
+            description: repoData.description,
+            language: repoData.language,
+            tags: repoData.topics,
+            stars: repoData.stargazers_count,
+            forks: repoData.forks_count,
+            githubUrl: repoData.html_url,
+            homepage: repoData.homepage,
+            previewImage: `https://raw.githubusercontent.com/${githubUsername}/${repoName}/main/assets/preview.png`,
+            readme: readmeContent
+        });
+    } catch (error) {
+        console.error('Error fetching project details:', error);
         next(error);
     }
 };

@@ -68,7 +68,7 @@ export const gDetail = async (req, res, next) => {
 
         const readmeResponse = await fetch(`https://api.github.com/repos/${githubUsername}/${repoName}/readme`, {
             headers: {
-                Authorization: `Bearer ${GITHUB_TOKEN}`,
+                Authorization: `token ${GITHUB_TOKEN}`,
                 Accept: "application/vnd.github+json"
             }
         });

@@ -14,7 +14,7 @@ const gitRepoData = async (req, res) => {
             {
                 headers: {
                     // Include GitHub token for authentication
-                    Authorization: `Bearer ${GITHUB_TOKEN}`,
+                    Authorization: `token ${GITHUB_TOKEN}`,
                     // Specify API version for GitHub
                     Accept: "application/vnd.github+json"
                 }

@@ -68,8 +68,9 @@ export const gDetail = async (req, res, next) => {
 
         const readmeResponse = await fetch(`https://api.github.com/repos/${githubUsername}/${repoName}/readme`, {
             headers: {
-                Authorization: `token ${GITHUB_TOKEN}`,
-                Accept: "application/vnd.github+json"
+                Authorization: `Bearer ${GITHUB_TOKEN}`,
+                Accept: "application/vnd.github+json",
+                "User-Agent": "portfolio-backend",
             }
         });
 
@@ -82,16 +83,19 @@ export const gDetail = async (req, res, next) => {
         }
 
         res.status(200).json({
-            name: repoData.name,
-            description: repoData.description,
-            language: repoData.language,
-            tags: repoData.topics,
-            stars: repoData.stargazers_count,
-            forks: repoData.forks_count,
-            githubUrl: repoData.html_url,
-            homepage: repoData.homepage,
-            previewImage: `https://raw.githubusercontent.com/${githubUsername}/${repoName}/main/assets/preview.png`,
-            readme: readmeContent
+            success: true,
+            data: {
+                name: repoData.name,
+                description: repoData.description,
+                language: repoData.language,
+                tags: repoData.topics,
+                stars: repoData.stargazers_count,
+                forks: repoData.forks_count,
+                githubUrl: repoData.html_url,
+                homepage: repoData.homepage,
+                imageUrl: `https://raw.githubusercontent.com/${githubUsername}/${repoName}/main/assets/preview.png`,
+                readme: readmeContent
+            }
         });
     } catch (error) {
         console.error('Error fetching project details:', error);

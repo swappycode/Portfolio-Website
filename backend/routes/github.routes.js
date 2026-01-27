@@ -7,6 +7,6 @@ const gitRouter = Router();
 
 gitRouter.get('/',gList);
 
-gitRouter.get('/Detail/:name',gDetail);
+gitRouter.get('/:name',gDetail);
 
 export default gitRouter;

@@ -37,11 +37,13 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
     if (!isAutoWalking) {
       if (dist < INTERACTION_DIST) {
         if (activeNPC !== data.id) {
+          console.log('NPC interaction triggered:', data.id, 'Distance:', dist);
           setActiveNPC(data.id);
           setDialogueOpen(true);
         }
       } else if (dist > EXIT_DIST) {
         if (activeNPC === data.id) {
+          console.log('NPC interaction ended:', data.id, 'Distance:', dist);
           setActiveNPC(null);
           setDialogueOpen(false);
         }

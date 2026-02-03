@@ -1,0 +1,505 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+.pnpm-store/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.*
+!.env.example
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# IDE and editor files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/*.code-snippets
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Local development files
+*.local
+.env.local
+.env.development
+.env.test
+.env.production
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# React
+*.react
+
+# Three.js and 3D assets cache
+.three/
+*.three-cache
+
+# Game development files
+*.glb
+*.blend
+*.blend1
+*.blend2
+*.max
+*.ma
+*.mb
+*.c4d
+*.obj
+*.fbx
+*.dae
+*.3ds
+*.stl
+*.ply
+
+# Image cache
+*.psd
+*.ai
+*.sketch
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Temporary downloads
+*.download
+
+# System files
+*.tmp
+*.temp
+*~
+
+# Platform files
+*.iml
+*.ipr
+*.iws
+
+# Python (if you have any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Java (if you have any Java files)
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# C/C++ (if you have any native modules)
+*.o
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+*.dmg
+*.app
+
+# Rust (if you have any Rust code)
+target/
+debug/
+release/
+
+# Go (if you have any Go code)
+*.exe
+*.test
+vendor/
+
+# PHP (if you have any PHP files)
+*.php
+*.phps
+
+# Ruby (if you have any Ruby files)
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/test/tmp/
+/test/version_tmp/
+
+# .gitignore itself (if you want to exclude specific versions)
+.gitignore.local
+
+# Screenshot and recording files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.dmg
+*.iso
+
+# Local configuration files
+config.local.js
+config.local.json
+config.local.yml
+config.local.yaml
+
+# Development tools
+.sass-cache/
+*.sass-cache
+.stylelintcache
+
+# Testing
+test-results/
+junit.xml
+coverage.xml
+*.coverage
+.nyc_output
+
+# Docker
+.dockerignore
+.docker/
+docker-compose.override.yml
+
+# Kubernetes
+.kube/
+kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Ansible
+ansible.cfg
+*.retry
+
+# AWS
+.aws/
+aws-exports.js
+
+# Google Cloud
+.gcloud/
+gcloud/
+.gcp/
+
+# Azure
+.azure/
+azure-pipelines.yml
+
+# Heroku
+Procfile
+Procfile.windows
+
+# Netlify
+netlify.toml
+
+# Vercel
+.vercel/
+
+# Firebase
+firebase.json
+.firebaserc
+
+# Cloudflare
+wrangler.toml
+
+# Platform.sh
+.platform/
+.platform.app.yaml
+.platform/routes.yaml
+.platform/services.yaml
+
+# Railway
+railway.toml
+
+# Render
+render.yaml
+
+# Railway
+Dockerfile
+.dockerignore
+
+# Local tunnel
+.lt/
+
+# ngrok
+.ngrok/
+
+# Local by Flywheel
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Lando
+.lando/
+
+# DDEV
+.ddev/
+
+# Laravel Valet
+*.ValetDriver.php
+
+# Laravel
+.env
+.env.backup
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.DS_Store
+.vagrant/
+
+# WordPress
+wp-config.php
+wp-config-sample.php
+.htaccess
+.htaccess.bak
+.htaccess.orig
+.htaccess.save
+*.sql
+*.sql.gz
+*.tar.gz
+*.zip
+wp-content/uploads/
+wp-content/cache/
+wp-content/backup-db/
+wp-content/upgrade/
+wp-content/advanced-cache.php
+wp-content/object-cache.php
+wp-content/wp-cache-config.php
+wp-content/install.php
+wp-content/mu-plugins/advanced-cache.php
+wp-content/mu-plugins/object-cache.php
+wp-content/mu-plugins/wp-ajax.php
+wp-content/mu-plugins/wp-super-cache.php
+wp-content/plugins/wp-super-cache/
+wp-content/themes/twenty*/functions.php
+wp-content/themes/twenty*/style.css
+wp-content/themes/twenty*/screenshot.png
+wp-content/themes/twenty*/rtl.css
+wp-content/themes/twenty*/comments.php
+wp-content/themes/twenty*/footer.php
+wp-content/themes/twenty*/header.php
+wp-content/themes/twenty*/index.php
+wp-content/themes/twenty*/sidebar.php
+wp-content/themes/twenty*/search.php
+wp-content/themes/twenty*/archive.php
+wp-content/themes/twenty*/single.php
+wp-content/themes/twenty*/page.php
+wp-content/themes/twenty*/404.php
+wp-content/themes/twenty*/author.php
+wp-content/themes/twenty*/category.php
+wp-content/themes/twenty*/tag.php
+wp-content/themes/twenty*/taxonomy.php
+wp-content/themes/twenty*/date.php
+wp-content/themes/twenty*/home.php
+wp-content/themes/twenty*/front-page.php
+wp-content/themes/twenty*/privacypolicy.php
+wp-content/themes/twenty*/embed.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php
+wp-content/themes/twenty*/comments-popup.php

@@ -83,3 +83,89 @@ export const CEL_SHADER_CONFIG = {
   // Light direction for consistent shading
   lightDirection: { x: 1, y: 1, z: 1 }
 };
+
+// Path configuration for anime-style roads and paths
+export const PATH_CONFIG = {
+  // Main path properties
+  mainPath: {
+    width: 1.2,
+    textureScale: 6.0,
+    brickColor: '#b87333', // Warm bronze/copper
+    mortarColor: '#6b4f31', // Dark brown
+    segments: 16
+  },
+  // Side path properties
+  sidePath: {
+    width: 0.8,
+    textureScale: 10.0,
+    brickColor: '#a0522d', // Saddle brown
+    mortarColor: '#5d4037', // Dark coffee brown
+    segments: 16
+  },
+  // Path placement and elevation
+  elevationOffset: 0.02, // How far above ground paths are placed
+  // Path types and their positions
+  pathLayout: {
+    equator: true, // Main horizontal path
+    primeMeridian: true, // Main vertical path
+    additionalMeridian: true // Secondary vertical path
+  }
+};
+
+// Tree placement configuration for structured forest distribution
+export const TREE_CONFIG = {
+  // Total tree count
+  totalTrees: 100,
+  
+  // Path-side forest configuration
+  pathForests: {
+    // Distance from path edges where trees can spawn
+    minDistanceFromPath: 0.8,
+    maxDistanceFromPath: 2.5,
+    // Number of trees per path segment
+    treesPerPathSegment: 6,
+    // Variation in tree size near paths
+    sizeVariation: 0.3
+  },
+  
+  // Forest clearing configuration
+  forestClearings: {
+    // Number of forest clusters
+    clusterCount: 8,
+    // Trees per cluster
+    treesPerCluster: 5,
+    // Cluster radius (how spread out trees are in a cluster)
+    clusterRadius: 1.5,
+    // Minimum distance between clusters
+    minClusterDistance: 3.0
+  },
+  
+  // Tree size configuration
+  treeSizes: {
+    minScale: 0.45,
+    maxScale: 0.45,
+    // Size variation based on location (paths vs forests)
+    pathSizeMultiplier: 0.8,
+    forestSizeMultiplier: 1.0
+  },
+  
+  // Forest zone definitions (spherical coordinates)
+  forestZones: [
+    // Zone 1: Northern hemisphere, east side
+    { center: { theta: Math.PI / 4, phi: Math.PI / 3 }, radius: 1.2 },
+    // Zone 2: Northern hemisphere, west side  
+    { center: { theta: -Math.PI / 4, phi: Math.PI / 3 }, radius: 1.2 },
+    // Zone 3: Southern hemisphere, east side
+    { center: { theta: Math.PI / 4, phi: 2 * Math.PI / 3 }, radius: 1.2 },
+    // Zone 4: Southern hemisphere, west side
+    { center: { theta: -Math.PI / 4, phi: 2 * Math.PI / 3 }, radius: 1.2 },
+    // Zone 5: Upper northern area
+    { center: { theta: 0, phi: Math.PI / 6 }, radius: 1.0 },
+    // Zone 6: Upper southern area
+    { center: { theta: 0, phi: 5 * Math.PI / 6 }, radius: 1.0 },
+    // Zone 7: Side northern area
+    { center: { theta: Math.PI / 2, phi: Math.PI / 3 }, radius: 1.0 },
+    // Zone 8: Side southern area
+    { center: { theta: -Math.PI / 2, phi: 2 * Math.PI / 3 }, radius: 1.0 }
+  ]
+};

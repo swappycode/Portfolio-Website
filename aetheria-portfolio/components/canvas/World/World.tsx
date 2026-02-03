@@ -1,12 +1,15 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, Quaternion, Vector3, Euler, MathUtils } from 'three';
+import { Group, Quaternion, Vector3 } from 'three';
 import { useGameStore } from '../../../store/gameStore';
-import { NPC_CONFIG, WORLD_RADIUS, COLORS, CEL_SHADER_CONFIG } from '../../../config/world.config';
+import { NPC_CONFIG, WORLD_RADIUS, CEL_SHADER_CONFIG } from '../../../config/world.config';
 import { NPC } from '../NPC/NPC';
-import { Trees } from './Props';
+import { Trees, Bushes, FallenTrees, DeadTrees, Rocks } from './Props';
 import { CelShaderMaterial } from './CelShaderMaterial';
-import * as maath from 'maath';
+import { Paths, generateStructuredPaths } from './Paths';
+import { AnimeClouds } from '../Sky/AnimeClouds';
+import { distanceOnSphere, findClosestPointOnPaths, findPathWaypoints } from '../utils/pathfinding';
+
 
 interface WorldProps {
   input: { forward: boolean; backward: boolean; left: boolean; right: boolean };
@@ -17,172 +20,189 @@ export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange })
   const worldRef = useRef<Group>(null);
   
   // Game State
-  const { isAutoWalking, activeNPC, cancelAutoWalk, startAutoWalk, setDialogueOpen } = useGameStore();
+  const { isAutoWalking, activeNPC, cancelAutoWalk, setDialogueOpen } = useGameStore();
   
+  const pathsData = useMemo(() => generateStructuredPaths(), []);
+  const npcDataOnPath = useMemo(() => {
+    return NPC_CONFIG.map((npc) => {
+      const closest = findClosestPointOnPaths(new Vector3(...npc.position), pathsData);
+      return {
+        ...npc,
+        position: [closest.point.x, closest.point.y, closest.point.z] as [number, number, number]
+      };
+    });
+  }, [pathsData]);
+
   // Physics Constants
-  const SPEED = 0.02; // Reduced walking speed for better control
-  const ROTATION_SMOOTHING = 0.1;
-  
-  // Internal state for rotation logic
-  const targetQuaternion = useRef(new Quaternion());
-  const autoWalkTarget = useRef<Quaternion | null>(null);
+  const SPEED = 0.02;
+  const AUTO_WALK_ANGULAR_SPEED = 1.6; // Rad/sec for consistent, faster auto-walk
+  const WAYPOINT_REACHED_ANGLE = 0.05; // Radians: how close before advancing waypoint
+  const AUTO_WALK_STOP_ANGLE = 0.12; // Radians: stop before NPC so dialog doesn't overlap
+  const autoWalkWaypoints = useRef<Vector3[]>([]);
+  const currentWaypointIndex = useRef(0);
+  const targetPathPointRef = useRef<Vector3 | null>(null);
   const lastQuaternion = useRef(new Quaternion());
   const rotationVelocity = useRef({ x: 0, y: 0, z: 0 });
 
+  // Handle Auto-walking logic to NPCs
   useEffect(() => {
-    // Calculate target quaternion for auto-walk whenever activeNPC changes during auto-walk
     if (isAutoWalking && activeNPC) {
-        const npc = NPC_CONFIG.find(n => n.id === activeNPC);
-        if (npc) {
-            // Logic to rotate sphere so NPC is at top (0, R, 0)
-            // NPC Original Pos: P_local
-            // Desired Pos: (0, R, 0)
-            // We need a rotation R such that R * P_local = (0, R, 0)
+        const npc = npcDataOnPath.find(n => n.id === activeNPC);
+        if (npc && worldRef.current) {
+            // Get current world rotation and determine player position
+            const currentRotation = worldRef.current.quaternion;
+            const playerPos = new Vector3(0, 1, 0)
+              .applyQuaternion(currentRotation.clone().invert())
+              .normalize()
+              .multiplyScalar(WORLD_RADIUS);
             
-            const npcPos = new Vector3(...npc.position).normalize();
-            const topPos = new Vector3(0, 1, 0); // Normalized top
+            const npcPos = new Vector3(...npc.position);
             
-            // Create quaternion from unit vectors
-            const q = new Quaternion().setFromUnitVectors(npcPos, topPos);
-            autoWalkTarget.current = q;
+            // Calculate waypoints using pathfinding algorithm
+            const waypoints = findPathWaypoints(playerPos, npcPos, pathsData);
+            const targetClosest = findClosestPointOnPaths(npcPos, pathsData);
+            
+            autoWalkWaypoints.current = waypoints;
+            currentWaypointIndex.current = 0;
+            targetPathPointRef.current = targetClosest.point.clone();
         }
     } else {
-        autoWalkTarget.current = null;
+        autoWalkWaypoints.current = [];
+        currentWaypointIndex.current = 0;
+        targetPathPointRef.current = null;
     }
-  }, [isAutoWalking, activeNPC]);
+  }, [isAutoWalking, activeNPC, npcDataOnPath, pathsData]);
 
   useFrame((state, delta) => {
     if (!worldRef.current) return;
 
-    // 1. Handle Input Interrupt
+    // Interrupt auto-walk if player presses a key
     if (isAutoWalking && (input.forward || input.backward || input.left || input.right)) {
         cancelAutoWalk();
-        autoWalkTarget.current = null;
+        autoWalkWaypoints.current = [];
+        currentWaypointIndex.current = 0;
+        targetPathPointRef.current = null;
     }
 
     const currentQ = worldRef.current.quaternion;
 
-    if (isAutoWalking && autoWalkTarget.current) {
-        // --- AUTO WALK LOGIC ---
-        // Slerp towards target (reduced speed)
-        currentQ.slerp(autoWalkTarget.current, 1.5 * delta);
-        
-        // Check arrival
-        if (currentQ.angleTo(autoWalkTarget.current) < 0.01) {
-            // Snap to exact
-            worldRef.current.quaternion.copy(autoWalkTarget.current);
-            
-            // Arrival Sequence: Stop walking, Open Dialogue
+    if (isAutoWalking && autoWalkWaypoints.current.length > 0) {
+        const playerPos = new Vector3(0, 1, 0)
+          .applyQuaternion(currentQ.clone().invert())
+          .normalize()
+          .multiplyScalar(WORLD_RADIUS);
+
+        const waypoints = autoWalkWaypoints.current;
+        let currentIdx = currentWaypointIndex.current;
+
+        const targetPathPoint = targetPathPointRef.current;
+        if (targetPathPoint && distanceOnSphere(playerPos, targetPathPoint) <= AUTO_WALK_STOP_ANGLE) {
             cancelAutoWalk();
             setDialogueOpen(true);
-            
-            autoWalkTarget.current = null;
+            autoWalkWaypoints.current = [];
+            currentWaypointIndex.current = 0;
+            targetPathPointRef.current = null;
+            return;
         }
-    } else {
-        // --- MANUAL WALK LOGIC ---
-        // Basic Logic: 
-        // W/S rotates world around X axis.
-        // A/D rotates world around Z axis.
         
-        // Create small rotation quaternions based on input
-        const xAxis = new Vector3(1, 0, 0);
-        const zAxis = new Vector3(0, 0, 1);
-        
-        const moveQ = new Quaternion();
-        
-        if (input.forward) {
-            const q = new Quaternion().setFromAxisAngle(xAxis, SPEED);
-            moveQ.multiply(q);
-        }
-        if (input.backward) {
-            const q = new Quaternion().setFromAxisAngle(xAxis, -SPEED);
-            moveQ.multiply(q);
-        }
-        if (input.left) {
-             // Rotate around Z axis (or camera-relative axis)
-             const q = new Quaternion().setFromAxisAngle(zAxis, -SPEED);
-             moveQ.multiply(q);
-        }
-        if (input.right) {
-             const q = new Quaternion().setFromAxisAngle(zAxis, SPEED);
-             moveQ.multiply(q);
+        // If we've passed all waypoints, complete the journey
+        if (currentIdx >= waypoints.length) {
+            cancelAutoWalk();
+            setDialogueOpen(true);
+            autoWalkWaypoints.current = [];
+            currentWaypointIndex.current = 0;
+            targetPathPointRef.current = null;
+            return;
         }
 
-        // Apply rotation: NewWorldQ = MoveQ * OldWorldQ
-        // Order matters for local vs global. 
-        // We want to rotate the world "under" the player, which feels like local rotation relative to camera view.
-        // Since Camera is fixed looking -Z, Right is +X, Up is +Y.
+        const currentWaypoint = waypoints[Math.min(currentIdx, waypoints.length - 1)];
+        if (distanceOnSphere(playerPos, currentWaypoint) < WAYPOINT_REACHED_ANGLE && currentIdx < waypoints.length - 1) {
+            currentWaypointIndex.current += 1;
+            currentIdx = currentWaypointIndex.current;
+        }
+
+        const targetWaypoint = waypoints[Math.min(currentIdx, waypoints.length - 1)];
+        if (currentIdx >= waypoints.length - 1 && distanceOnSphere(playerPos, targetWaypoint) <= WAYPOINT_REACHED_ANGLE * 1.25) {
+            cancelAutoWalk();
+            setDialogueOpen(true);
+            autoWalkWaypoints.current = [];
+            currentWaypointIndex.current = 0;
+            targetPathPointRef.current = null;
+            return;
+        }
+
+        // Calculate target rotation to bring waypoint to top of world
+        const topPos = new Vector3(0, 1, 0);
+        const targetQ = new Quaternion().setFromUnitVectors(
+          targetWaypoint.clone().normalize(),
+          topPos
+        );
+
+        // Smoothly rotate world to target waypoint with constant angular speed
+        const angle = currentQ.angleTo(targetQ);
+        if (angle > 0.00001) {
+            const t = Math.min(1, (AUTO_WALK_ANGULAR_SPEED * delta) / angle);
+            currentQ.slerp(targetQ, t);
+        }
+    } else if (isAutoWalking && autoWalkWaypoints.current.length === 0) {
+        cancelAutoWalk();
+        setDialogueOpen(true);
+        targetPathPointRef.current = null;
+    } else {
+        // Manual walking logic with smoothing
+        const xAxis = new Vector3(1, 0, 0);
+        const zAxis = new Vector3(0, 0, 1);
+        const moveQ = new Quaternion();
         
+        if (input.forward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, SPEED));
+        if (input.backward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, -SPEED));
+        if (input.left) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, -SPEED));
+        if (input.right) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, SPEED));
+
         if (input.forward || input.backward || input.left || input.right) {
             worldRef.current.quaternion.multiplyQuaternions(moveQ, currentQ);
         }
     }
 
-    // Calculate rotation velocity for character facing direction
+    // Calculate rotation velocity for physics effects (like hair/clothes swaying)
     const currentQuaternion = worldRef.current.quaternion;
     const deltaQuaternion = new Quaternion().copy(currentQuaternion).multiply(lastQuaternion.current.clone().invert());
-    
-    // Convert quaternion difference to angular velocity
     const angle = 2 * Math.acos(Math.max(-1, Math.min(1, deltaQuaternion.w)));
     const axis = new Vector3(deltaQuaternion.x, deltaQuaternion.y, deltaQuaternion.z).normalize();
-    
-    // Calculate velocity components
     const velocityMagnitude = angle / delta;
-    const velocity = {
+    
+    rotationVelocity.current = {
         x: axis.x * velocityMagnitude,
         y: axis.y * velocityMagnitude,
         z: axis.z * velocityMagnitude
     };
     
-    // Update rotation velocity
-    rotationVelocity.current = velocity;
-    
-    // Notify parent component of rotation velocity change
-    if (onRotationVelocityChange) {
-        onRotationVelocityChange(velocity);
-    }
-    
-    // Store current quaternion for next frame
+    if (onRotationVelocityChange) onRotationVelocityChange(rotationVelocity.current);
     lastQuaternion.current.copy(currentQuaternion);
   });
 
-  return (
-    <group ref={worldRef}>
-      {/* The Sphere Ground */}
-      <mesh receiveShadow castShadow>
-        <sphereGeometry args={[WORLD_RADIUS, 64, 64]} />
-        <CelShaderMaterial
-          color={CEL_SHADER_CONFIG.baseColor}
-          outlineColor={CEL_SHADER_CONFIG.outlineColor}
-          outlineThickness={CEL_SHADER_CONFIG.outlineThickness}
-          shadowLevels={CEL_SHADER_CONFIG.shadowLevels}
-          rimLighting={CEL_SHADER_CONFIG.rimLighting}
-          lightDirection={new Vector3(
-            CEL_SHADER_CONFIG.lightDirection.x,
-            CEL_SHADER_CONFIG.lightDirection.y,
-            CEL_SHADER_CONFIG.lightDirection.z
-          )}
-        />
-      </mesh>
-      
-      {/* Decorative Props */}
-      <Trees />
+return (
+    <>
+      {/* 3D Anime Clouds - Floating outside the rotating world */}
+      <AnimeClouds />
 
-      {/* NPCs */}
-      {NPC_CONFIG.map(npc => (
-        <NPC key={npc.id} data={npc} worldRotation={new Vector3()} />
-      ))}
-      
-      {/* Roads / Path decoration (Simple Rings) */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[WORLD_RADIUS + 0.01, 0.5, 16, 100]} />
-          <meshStandardMaterial color={COLORS.path} transparent opacity={0.3} />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-          <torusGeometry args={[WORLD_RADIUS + 0.01, 0.5, 16, 100]} />
-          <meshStandardMaterial color={COLORS.path} transparent opacity={0.3} />
-      </mesh>
-
-    </group>
+      <group ref={worldRef}>
+        <mesh receiveShadow castShadow>
+          <sphereGeometry args={[WORLD_RADIUS, 64, 64]} />
+          <CelShaderMaterial /* props */ />
+        </mesh>
+        
+        <Trees />
+        <Bushes />
+        <FallenTrees />
+        <DeadTrees />
+        <Rocks />
+        <Paths />
+        
+        {npcDataOnPath.map(npc => (
+          <NPC key={npc.id} data={npc} worldRotation={new Vector3()} />
+        ))}
+      </group>
+    </>
   );
 };

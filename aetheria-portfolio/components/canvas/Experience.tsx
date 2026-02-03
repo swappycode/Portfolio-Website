@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { PerspectiveCamera, Environment, KeyboardControls } from '@react-three/drei';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { PerspectiveCamera, Environment, KeyboardControls, Preload } from '@react-three/drei';
 import { World } from './World/World';
 import { Player } from './Player/Player';
 import { AnimeSky } from './Sky/AnimeSky';
+import { FloatingCard } from '../ui/FloatingCard';
 import { WORLD_RADIUS, CAMERA_DISTANCE, CAMERA_HEIGHT, COLORS } from '../../config/world.config';
 import { useGameStore } from '../../store/gameStore';
-import { Vector3 } from 'three';
+import { Vector3, Euler, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 
 // Custom hook to bridge KeyboardControls with our loop
 function InputHandler({ setInput }: { setInput: (i: any) => void }) {
@@ -42,37 +43,100 @@ function InputHandler({ setInput }: { setInput: (i: any) => void }) {
     return null;
 }
 
+const CameraRig: React.FC<{
+  isAutoWalking: boolean;
+  cameraRef: React.RefObject<ThreePerspectiveCamera>;
+  onCameraUpdate: (position: Vector3, rotation: Euler) => void;
+}> = ({ isAutoWalking, cameraRef, onCameraUpdate }) => {
+  const { camera } = useThree();
+  const cameraLookAtRef = useRef(new Vector3(0, WORLD_RADIUS + 0.8, 0));
+  const CAMERA_SMOOTHING = 3.5;
+
+  const manualCameraPos = useMemo(
+    () => new Vector3(0, CAMERA_HEIGHT, CAMERA_DISTANCE),
+    []
+  );
+  const autoCameraPos = useMemo(
+    () => new Vector3(0, CAMERA_HEIGHT + 0.8, CAMERA_DISTANCE + 1.5),
+    []
+  );
+  const manualLookAt = useMemo(
+    () => new Vector3(0, WORLD_RADIUS + 0.8, 0),
+    []
+  );
+  const autoLookAt = useMemo(
+    () => new Vector3(0, WORLD_RADIUS + 1.2, 0),
+    []
+  );
+
+  useFrame((state, delta) => {
+    const cam = cameraRef.current ?? (camera as ThreePerspectiveCamera);
+    const targetPos = isAutoWalking ? autoCameraPos : manualCameraPos;
+    const targetLookAt = isAutoWalking ? autoLookAt : manualLookAt;
+    const t = 1 - Math.exp(-CAMERA_SMOOTHING * delta);
+
+    cam.position.lerp(targetPos, t);
+    cameraLookAtRef.current.lerp(targetLookAt, t);
+    cam.lookAt(cameraLookAtRef.current);
+
+    onCameraUpdate(cam.position.clone(), cam.rotation.clone());
+  });
+
+  return null;
+};
+
 export const Experience: React.FC = () => {
   const [input, setInput] = useState({ forward: false, backward: false, left: false, right: false });
   const [rotationVelocity, setRotationVelocity] = useState({ x: 0, y: 0, z: 0 });
+  const [cameraPosition, setCameraPosition] = useState(new Vector3());
+  const [cameraRotation, setCameraRotation] = useState(new Euler());
+  const cameraRef = useRef<ThreePerspectiveCamera>(null);
   
   // FIX: Extract hook from logical OR expression to ensure consistent execution order
   const isAutoWalking = useGameStore((s) => s.isAutoWalking);
   const isMoving = input.forward || input.backward || input.left || input.right || isAutoWalking;
 
   return (
-    <Canvas shadows className="w-full h-full bg-blue-100">
+    <Canvas
+      shadows
+      dpr={[1, 1.5]}
+      gl={{ powerPreference: 'high-performance', antialias: true }}
+      className="w-full h-full bg-blue-100"
+    >
         <InputHandler setInput={setInput} />
         
         {/* Camera Setup: Fixed angle looking down at player */}
         <PerspectiveCamera 
+            ref={cameraRef}
             makeDefault 
             position={[0, CAMERA_HEIGHT, CAMERA_DISTANCE]} 
             fov={50} 
-            onUpdate={c => c.lookAt(0, WORLD_RADIUS + 0.8, 0)} // Look at character's chest level for smaller character
+        />
+        <CameraRig
+          isAutoWalking={isAutoWalking}
+          cameraRef={cameraRef}
+          onCameraUpdate={(pos, rot) => {
+            setCameraPosition(pos);
+            setCameraRotation(rot);
+          }}
         />
 
         {/* Lighting */}
-        <ambientLight intensity={0.6} color="#ffffff" />
+        <ambientLight intensity={2} color="#ffffff" />
         <directionalLight 
             castShadow 
             position={[10, 20, 10]} 
             intensity={1.5} 
-            shadow-mapSize={[2048, 2048]} 
+            shadow-mapSize={[1024, 1024]} 
             shadow-bias={-0.0001}
         >
             <orthographicCamera attach="shadow-camera" args={[-20, 20, 20, -20]} />
         </directionalLight>
+
+
+
+
+
         
         {/* Anime Sky Shader - Beautiful Dawn Theme */}
         <AnimeSky 
@@ -90,7 +154,11 @@ export const Experience: React.FC = () => {
 
         <World input={input} onRotationVelocityChange={setRotationVelocity} />
         <Player isMoving={isMoving} rotationVelocity={rotationVelocity} />
+        
+        {/* Floating Card System */}
+        <FloatingCard cameraPosition={cameraPosition} cameraRotation={cameraRotation} />
 
+        <Preload all />
     </Canvas>
   );
 };

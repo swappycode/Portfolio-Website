@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Experience } from './components/canvas/Experience';
 import { Navbar } from './components/ui/Navbar';
-import { DialoguePanel } from './components/ui/DialoguePanel';
+import { LoadingScreen } from './components/ui/LoadingScreen';
 
 function App() {
   return (
@@ -9,14 +9,13 @@ function App() {
       
       {/* 3D Canvas Layer */}
       <div className="absolute inset-0 z-0">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-indigo-500 font-bold">Loading World...</div>}>
+        <Suspense fallback={null}>
           <Experience />
         </Suspense>
       </div>
 
       {/* UI Layer */}
       <Navbar />
-      <DialoguePanel />
 
       {/* Mobile/Controls hint */}
       <div className="absolute bottom-6 left-6 pointer-events-none text-gray-400 text-xs font-mono">
@@ -25,6 +24,8 @@ function App() {
           Walk to NPCs to interact
         </div>
       </div>
+
+      <LoadingScreen />
     </div>
   );
 }

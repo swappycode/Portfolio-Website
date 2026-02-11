@@ -105,7 +105,7 @@ const userRes = await fetch("https://api.github.com/user", {
       `https://api.github.com/repos/${githubUsername}/${slug}`,
       {
         headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Authorization: `token ${GITHUB_TOKEN}`,
           Accept: "application/vnd.github+json",
           "User-Agent": "portfolio-backend",
         },
@@ -126,7 +126,7 @@ const userRes = await fetch("https://api.github.com/user", {
       `https://api.github.com/repos/${githubUsername}/${slug}/readme`,
       {
         headers: {
-          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Authorization: `token ${GITHUB_TOKEN}`,
           Accept: "application/vnd.github+json",
           "User-Agent": "portfolio-backend",
         },

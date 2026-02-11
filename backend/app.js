@@ -26,6 +26,18 @@ app.get('/', (req, res) => {
     res.send('Who Am I');
 });
 
+// Profile endpoint for frontend
+app.get('/api/v1/profile', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            name: "Developer",
+            role: "Creative Developer", 
+            bio: "Building worlds on the web with React, Three.js, and modern web technologies."
+        }
+    });
+});
+
 // Error handling middleware (must be last)
 app.use(errorHandler);
 

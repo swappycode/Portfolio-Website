@@ -21,6 +21,11 @@ export const NPC_CONFIG: NPCData[] = [
     name: 'Guide',
     position: getPositionOnSphere(WORLD_RADIUS, 0, Math.PI / 2.5), // Front-ish
     color: '#FF9F1C',
+    modelPath: '/models/Demon.glb',
+    interruptAnim: {
+      name: 'weapon',
+      interval: 5,
+    },
     dialogue: {
       intro: "Hi! I represent the developer behind this world.",
       details: "I'm a Frontend Specialist with a passion for 3D web experiences. I love React, Three.js, and creating performant UIs."
@@ -32,6 +37,10 @@ export const NPC_CONFIG: NPCData[] = [
     name: 'Builder',
     position: getPositionOnSphere(WORLD_RADIUS, Math.PI / 2, Math.PI / 2), // Right
     color: '#2EC4B6',
+    modelPath: '/models/Fish.glb',
+    interruptAnim: {
+      name: 'hitreact',
+    },
     dialogue: {
       intro: "This is the workshop. Check out what we've built."
     }
@@ -42,6 +51,10 @@ export const NPC_CONFIG: NPCData[] = [
     name: 'Merchant',
     position: getPositionOnSphere(WORLD_RADIUS, Math.PI, Math.PI / 2.5), // Back
     color: '#E71D36',
+    modelPath: '/models/Ninja.glb',
+    interruptAnim: {
+      name: ['jump', 'jump_idle', 'jump_land'],
+    },
     dialogue: {
       intro: "Looking for collaboration? Here's what I can offer.",
       details: "Full Stack Development, 3D Web Integration, Performance Optimization, and Technical Consulting."
@@ -53,6 +66,10 @@ export const NPC_CONFIG: NPCData[] = [
     name: 'Messenger',
     position: getPositionOnSphere(WORLD_RADIUS, -Math.PI / 2, Math.PI / 2), // Left
     color: '#A06CD5',
+    modelPath: '/models/Cactoro.glb',
+    interruptAnim: {
+      name: 'duck',
+    },
     dialogue: {
       intro: "Ready to connect? Send a message.",
       details: "email: dev@example.com | github: @devprofile | twitter: @devtweets"
@@ -115,8 +132,8 @@ export const PATH_CONFIG = {
 // Tree placement configuration for structured forest distribution
 export const TREE_CONFIG = {
   // Total tree count
-  totalTrees: 100,
-  
+  totalTrees: 80,
+
   // Path-side forest configuration
   pathForests: {
     // Distance from path edges where trees can spawn
@@ -127,7 +144,7 @@ export const TREE_CONFIG = {
     // Variation in tree size near paths
     sizeVariation: 0.3
   },
-  
+
   // Forest clearing configuration
   forestClearings: {
     // Number of forest clusters
@@ -139,7 +156,7 @@ export const TREE_CONFIG = {
     // Minimum distance between clusters
     minClusterDistance: 3.0
   },
-  
+
   // Tree size configuration
   treeSizes: {
     minScale: 0.45,
@@ -148,7 +165,7 @@ export const TREE_CONFIG = {
     pathSizeMultiplier: 0.8,
     forestSizeMultiplier: 1.0
   },
-  
+
   // Forest zone definitions (spherical coordinates)
   forestZones: [
     // Zone 1: Northern hemisphere, east side

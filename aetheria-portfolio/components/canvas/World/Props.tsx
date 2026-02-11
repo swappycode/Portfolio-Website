@@ -13,11 +13,11 @@ const Instance = DreiInstance as any;
 // Seeded pseudorandom number generator for deterministic tree placement
 class SeededRandom {
   private seed: number;
-  
+
   constructor(seed: number) {
     this.seed = seed;
   }
-  
+
   // Mulberry32 algorithm - produces consistent random numbers from a seed
   next(): number {
     this.seed |= 0;
@@ -48,45 +48,45 @@ const useRandomTreeData = () => {
     const trees: any[] = [];
     const _up = new Vector3(0, 1, 0);
     const _q = new Quaternion();
-    
+
     // Get all path points from the actual path generation
     const pathsData = generateStructuredPaths();
     const allPathPoints = pathsData.flat(); // Flatten all path segments into one array
-    
+
     const maxAttempts = TREE_CONFIG.totalTrees * 5; // Attempt up to 5x the target count
     let attempts = 0;
-    
+
     // Spawn trees randomly across the sphere, filtering out those that collide with paths
     while (trees.length < TREE_CONFIG.totalTrees && attempts < maxAttempts) {
       attempts++;
-      
+
       // Generate seeded random position on sphere surface using spherical coordinates
       const theta = seededRandom.next() * Math.PI * 2; // 0 to 2π (around)
       const phi = Math.acos(2 * seededRandom.next() - 1); // 0 to π (pole to pole, uniform distribution)
       const treePos = sphericalToCartesian(theta, phi, WORLD_RADIUS);
-      
+
       // Check collision with all path points
       if (checkCollisionWithPathPoints(treePos, allPathPoints, COLLISION_CHECK_RADIUS)) {
         continue; // Skip this position if it collides with a path
       }
-      
+
       // Calculate rotation to align tree with sphere normal
       _q.setFromUnitVectors(_up, treePos.clone().normalize());
       const correctionRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
       _q.multiply(correctionRotation);
-      
+
       // Seeded random scale for variety
-      const scale = TREE_CONFIG.treeSizes.minScale + seededRandom.next() * 
-                   (TREE_CONFIG.treeSizes.maxScale - TREE_CONFIG.treeSizes.minScale);
+      const scale = TREE_CONFIG.treeSizes.minScale + seededRandom.next() *
+        (TREE_CONFIG.treeSizes.maxScale - TREE_CONFIG.treeSizes.minScale);
       const finalScale = scale * (0.85 + seededRandom.next() * 0.3); // Add some variation
-      
+
       trees.push({
         position: [treePos.x, treePos.y, treePos.z],
         quaternion: [_q.x, _q.y, _q.z, _q.w],
         scale: finalScale
       });
     }
-    
+
     console.log(`Spawned ${trees.length} trees after ${attempts} attempts`);
     return trees;
   }, []);
@@ -98,42 +98,42 @@ const useRandomBushData = () => {
     const bushes: any[] = [];
     const _up = new Vector3(0, 1, 0);
     const _q = new Quaternion();
-    
+
     // Get all path points from the actual path generation
     const pathsData = generateStructuredPaths();
     const allPathPoints = pathsData.flat();
-    
+
     const maxAttempts = BUSH_CONFIG.totalBushes * 5;
     let attempts = 0;
-    
+
     // Spawn bushes randomly across the sphere, filtering out those that collide with paths
     while (bushes.length < BUSH_CONFIG.totalBushes && attempts < maxAttempts) {
       attempts++;
-      
+
       // Generate seeded random position on sphere surface
       const theta = bushSeededRandom.next() * Math.PI * 2;
       const phi = Math.acos(2 * bushSeededRandom.next() - 1);
       const bushPos = sphericalToCartesian(theta, phi, WORLD_RADIUS);
-      
+
       // Check collision with all path points (smaller collision radius for bushes)
       if (checkCollisionWithPathPoints(bushPos, allPathPoints, BUSH_COLLISION_RADIUS + PATH_COLLISION_BUFFER)) {
         continue; // Skip if collides with path
       }
-      
+
       // Calculate rotation to align bush with sphere normal
       _q.setFromUnitVectors(_up, bushPos.clone().normalize());
       const correctionRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
       _q.multiply(correctionRotation);
-      
+
       // Seeded random scale for variety
-      const scale = BUSH_CONFIG.bushSizes.minScale + bushSeededRandom.next() * 
-                   (BUSH_CONFIG.bushSizes.maxScale - BUSH_CONFIG.bushSizes.minScale);
+      const scale = BUSH_CONFIG.bushSizes.minScale + bushSeededRandom.next() *
+        (BUSH_CONFIG.bushSizes.maxScale - BUSH_CONFIG.bushSizes.minScale);
       const finalScale = scale * (0.9 + bushSeededRandom.next() * 0.2);
-      
+
       // Randomly select which bush model
       const bushModelIndex = Math.floor(bushSeededRandom.next() * BUSH_CONFIG.bushModels.length);
       const bushModel = BUSH_CONFIG.bushModels[bushModelIndex];
-      
+
       bushes.push({
         position: [bushPos.x, bushPos.y, bushPos.z],
         quaternion: [_q.x, _q.y, _q.z, _q.w],
@@ -141,7 +141,7 @@ const useRandomBushData = () => {
         model: bushModel
       });
     }
-    
+
     console.log(`Spawned ${bushes.length} bushes after ${attempts} attempts`);
     return bushes;
   }, []);
@@ -151,7 +151,7 @@ const useRandomBushData = () => {
 const GLTFTrees: React.FC<{ data: any[] }> = ({ data }) => {
   // Expects a model at /models/tree.glb
   const { scene } = useGLTF('/models/tree.glb');
-  
+
   // Find the first mesh in the GLTF to use as geometry source
   const treeMesh = useMemo(() => {
     let mesh: Mesh | null = null;
@@ -167,14 +167,14 @@ const GLTFTrees: React.FC<{ data: any[] }> = ({ data }) => {
 
   return (
     <Instances range={data.length} geometry={treeMesh.geometry} material={treeMesh.material}>
-       {data.map((d, i) => (
-          <Instance
-            key={i}
-            position={d.position}
-            quaternion={d.quaternion}
-            scale={d.scale}
-          />
-        ))}
+      {data.map((d, i) => (
+        <Instance
+          key={i}
+          position={d.position}
+          quaternion={d.quaternion}
+          scale={d.scale}
+        />
+      ))}
     </Instances>
   );
 };
@@ -183,7 +183,7 @@ const GLTFTrees: React.FC<{ data: any[] }> = ({ data }) => {
 const GLTFBushes: React.FC<{ data: any[] }> = ({ data }) => {
   const { scene: bush1Scene } = useGLTF('/models/bush1.glb');
   const { scene: bush2Scene } = useGLTF('/models/bush2.glb');
-  
+
   // Find meshes in both bush models
   const bush1Mesh = useMemo(() => {
     let mesh: Mesh | null = null;
@@ -255,7 +255,7 @@ const ProceduralTrees: React.FC<{ data: any[] }> = ({ data }) => {
           />
         ))}
       </Instances>
-      
+
       {/* Foliage */}
       <Instances range={data.length}>
         <coneGeometry args={[0.6, 1.5, 7]} />
@@ -263,11 +263,11 @@ const ProceduralTrees: React.FC<{ data: any[] }> = ({ data }) => {
         {data.map((d, i) => (
           <Instance
             key={`leaf-${i}`}
-            position={d.position} 
+            position={d.position}
             quaternion={d.quaternion}
             scale={d.scale}
           >
-             {/* Note: In a real scenario, we'd offset the cone geometry or use a group. 
+            {/* Note: In a real scenario, we'd offset the cone geometry or use a group. 
                  For this fallback, we'll accept the cone pivot is center, so it sits slightly inside trunk. 
                  To fix, we'd translate geometry. */}
           </Instance>
@@ -310,45 +310,45 @@ const useRandomFallenTreeData = () => {
     const fallenTrees: any[] = [];
     const _up = new Vector3(0, 1, 0);
     const _q = new Quaternion();
-    
+
     // Get all path points from the actual path generation
     const pathsData = generateStructuredPaths();
     const allPathPoints = pathsData.flat();
-    
+
     const { totalFallenTrees } = FALLENTREE_CONFIG;
     const { fallenTreeSizes: { minScale: ftMinScale, maxScale: ftMaxScale } } = FALLENTREE_CONFIG;
-    
+
     const maxAttempts = totalFallenTrees * 5;
     let attempts = 0;
-    
+
     while (fallenTrees.length < totalFallenTrees && attempts < maxAttempts) {
       attempts++;
-      
+
       const theta = fallenTreeSeededRandom.next() * Math.PI * 2;
       const phi = Math.acos(2 * fallenTreeSeededRandom.next() - 1);
       const ftPos = sphericalToCartesian(theta, phi, WORLD_RADIUS);
-      
+
       // Check collision with all path points
       if (checkCollisionWithPathPoints(ftPos, allPathPoints, TREE_COLLISION_RADIUS + PATH_COLLISION_BUFFER)) {
         continue;
       }
-      
+
       // Calculate rotation to align with sphere normal
       _q.setFromUnitVectors(_up, ftPos.clone().normalize());
       const correctionRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
       _q.multiply(correctionRotation);
-      
+
       // Seeded random scale for variety
       const scale = ftMinScale + fallenTreeSeededRandom.next() * (ftMaxScale - ftMinScale);
       const finalScale = scale * (0.9 + fallenTreeSeededRandom.next() * 0.2);
-      
+
       fallenTrees.push({
         position: [ftPos.x, ftPos.y, ftPos.z],
         quaternion: [_q.x, _q.y, _q.z, _q.w],
         scale: finalScale
       });
     }
-    
+
     console.log(`Spawned ${fallenTrees.length} fallen trees after ${attempts} attempts`);
     return fallenTrees;
   }, []);
@@ -357,7 +357,7 @@ const useRandomFallenTreeData = () => {
 // Load fallen tree model and render
 const GLTFFallenTrees: React.FC<{ data: any[] }> = ({ data }) => {
   const { scene } = useGLTF('/models/fallentree.glb');
-  
+
   const ftMesh = useMemo(() => {
     let mesh: Mesh | null = null;
     scene.traverse((child) => {
@@ -405,45 +405,45 @@ const useRandomDeadTreeData = () => {
     const deadTrees: any[] = [];
     const _up = new Vector3(0, 1, 0);
     const _q = new Quaternion();
-    
+
     // Get all path points from the actual path generation
     const pathsData = generateStructuredPaths();
     const allPathPoints = pathsData.flat();
-    
+
     const { totalDeadTrees } = DEADTREE_CONFIG;
     const { deadTreeSizes: { minScale: dtMinScale, maxScale: dtMaxScale } } = DEADTREE_CONFIG;
-    
+
     const maxAttempts = totalDeadTrees * 5;
     let attempts = 0;
-    
+
     while (deadTrees.length < totalDeadTrees && attempts < maxAttempts) {
       attempts++;
-      
+
       const theta = deadTreeSeededRandom.next() * Math.PI * 2;
       const phi = Math.acos(2 * deadTreeSeededRandom.next() - 1);
       const dtPos = sphericalToCartesian(theta, phi, WORLD_RADIUS);
-      
+
       // Check collision with all path points
       if (checkCollisionWithPathPoints(dtPos, allPathPoints, TREE_COLLISION_RADIUS + PATH_COLLISION_BUFFER)) {
         continue;
       }
-      
+
       // Calculate rotation to align with sphere normal
       _q.setFromUnitVectors(_up, dtPos.clone().normalize());
       const correctionRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
       _q.multiply(correctionRotation);
-      
+
       // Seeded random scale for variety
       const scale = dtMinScale + deadTreeSeededRandom.next() * (dtMaxScale - dtMinScale);
       const finalScale = scale * (0.9 + deadTreeSeededRandom.next() * 0.2);
-      
+
       deadTrees.push({
         position: [dtPos.x, dtPos.y, dtPos.z],
         quaternion: [_q.x, _q.y, _q.z, _q.w],
         scale: finalScale
       });
     }
-    
+
     console.log(`Spawned ${deadTrees.length} dead trees after ${attempts} attempts`);
     return deadTrees;
   }, []);
@@ -452,7 +452,7 @@ const useRandomDeadTreeData = () => {
 // Load dead tree model and render
 const GLTFDeadTrees: React.FC<{ data: any[] }> = ({ data }) => {
   const { scene } = useGLTF('/models/deadtree.glb');
-  
+
   const dtMesh = useMemo(() => {
     let mesh: Mesh | null = null;
     scene.traverse((child) => {
@@ -504,45 +504,45 @@ const useRandomRockData = () => {
     const rocks: any[] = [];
     const _up = new Vector3(0, 1, 0);
     const _q = new Quaternion();
-    
+
     // Get all path points from the actual path generation
     const pathsData = generateStructuredPaths();
     const allPathPoints = pathsData.flat();
-    
+
     const { totalRocks } = ROCK_CONFIG;
     const { rockSizes: { minScale: rockMinScale, maxScale: rockMaxScale } } = ROCK_CONFIG;
-    
+
     const maxAttempts = totalRocks * 5;
     let attempts = 0;
-    
+
     while (rocks.length < totalRocks && attempts < maxAttempts) {
       attempts++;
-      
+
       const theta = rockSeededRandom.next() * Math.PI * 2;
       const phi = Math.acos(2 * rockSeededRandom.next() - 1);
       const rockPos = sphericalToCartesian(theta, phi, WORLD_RADIUS);
-      
+
       // Check collision with all path points
       if (checkCollisionWithPathPoints(rockPos, allPathPoints, ROCK_COLLISION_RADIUS + PATH_COLLISION_BUFFER)) {
         continue;
       }
-      
+
       // Calculate rotation to align with sphere normal
       _q.setFromUnitVectors(_up, rockPos.clone().normalize());
       const correctionRotation = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
       _q.multiply(correctionRotation);
-      
+
       // Seeded random scale for variety
       const scale = rockMinScale + rockSeededRandom.next() * (rockMaxScale - rockMinScale);
       const finalScale = scale * (0.85 + rockSeededRandom.next() * 0.3);
-      
+
       rocks.push({
         position: [rockPos.x, rockPos.y, rockPos.z],
         quaternion: [_q.x, _q.y, _q.z, _q.w],
         scale: finalScale
       });
     }
-    
+
     console.log(`Spawned ${rocks.length} rocks after ${attempts} attempts`);
     return rocks;
   }, []);
@@ -551,7 +551,7 @@ const useRandomRockData = () => {
 // Load rock model and render
 const GLTFRocks: React.FC<{ data: any[] }> = ({ data }) => {
   const { scene } = useGLTF('/models/rock.glb');
-  
+
   const rockMesh = useMemo(() => {
     let mesh: Mesh | null = null;
     scene.traverse((child) => {

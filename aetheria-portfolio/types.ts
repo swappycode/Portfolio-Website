@@ -11,6 +11,11 @@ export interface NPCData {
   name: string;
   position: [number, number, number]; // x, y, z relative to sphere center
   color: string;
+  modelPath?: string; // Optional path to GLB model
+  interruptAnim?: {
+    name: string | string[];  // Single clip name or sequence of clip names
+    interval?: number;        // Optional delay (unused for alternating mode)
+  };
   dialogue: {
     intro: string;
     details?: string;
@@ -19,10 +24,75 @@ export interface NPCData {
 
 export interface ProjectItem {
   id: string;
+  slug?: string; // For Itch.io games - extracted from itch.io URL
   title: string;
   description: string;
   tags: string[];
   link?: string;
+  imageUrl?: string;
+}
+
+// Backend API Response Types
+export interface BackendApiResponse<T> {
+  success: boolean;
+  count?: number;
+  data: T;
+}
+
+export interface GitHubProject {
+  name: string;
+  description: string;
+  tags: string[];
+  githubUrl: string;
+  imageUrl?: string;
+  language?: string;
+  stars?: number;
+  forks?: number;
+  homepage?: string;
+  readme?: string;
+}
+
+export interface ItchGame {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  cover?: string;
+  url: string;
+  stats: {
+    views: number;
+    downloads: number;
+    purchases: number;
+  };
+  platforms: {
+    windows: boolean;
+    linux: boolean;
+    mac: boolean;
+    android: boolean;
+  };
+  pricing: {
+    min_price: number;
+    earnings: any[];
+  };
+  published: {
+    published: boolean;
+    published_at: string;
+    created_at: string;
+  };
+  github?: {
+    stars: number;
+    forks: number;
+    language: string;
+    html_url: string;
+  };
+  readme?: string;
+  download_page: string;
+}
+
+export interface ProfileData {
+  name: string;
+  role: string;
+  bio: string;
 }
 
 export type ProjectCategory = 'GAME_DEV' | 'SDE';
@@ -32,11 +102,11 @@ export interface GameState {
   activeNPC: string | null;
   isAutoWalking: boolean;
   targetRotationQuaternion: [number, number, number, number] | null;
-  
+
   // Interaction
   dialogueOpen: boolean;
   projectCategory: ProjectCategory;
-  
+
   // Actions
   setActiveNPC: (id: string | null) => void;
   startAutoWalk: (npcId: string) => void;

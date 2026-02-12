@@ -330,7 +330,7 @@ wrangler.toml
 railway.toml
 
 # Render
-render.yaml
+
 
 # Railway
 Dockerfile

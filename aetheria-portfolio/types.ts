@@ -100,6 +100,7 @@ export type ProjectCategory = 'GAME_DEV' | 'SDE';
 export interface GameState {
   // Navigation
   activeNPC: string | null;
+  visitedNPCs: Record<string, boolean>;
   isAutoWalking: boolean;
   targetRotationQuaternion: [number, number, number, number] | null;
 
@@ -109,6 +110,7 @@ export interface GameState {
 
   // Actions
   setActiveNPC: (id: string | null) => void;
+  setVisitedNPC: (id: string) => void;
   startAutoWalk: (npcId: string) => void;
   cancelAutoWalk: () => void;
   setDialogueOpen: (isOpen: boolean) => void;

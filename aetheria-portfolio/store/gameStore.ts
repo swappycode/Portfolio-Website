@@ -8,12 +8,17 @@ interface GameStore extends GameState {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   activeNPC: null,
+  visitedNPCs: {},
   isAutoWalking: false,
   targetRotationQuaternion: null,
   dialogueOpen: false,
   projectCategory: 'GAME_DEV',
 
   setActiveNPC: (id) => set({ activeNPC: id }),
+
+  setVisitedNPC: (id) => set((state) => ({
+    visitedNPCs: { ...state.visitedNPCs, [id]: true }
+  })),
 
   startAutoWalk: (npcId) => {
     const npc = NPC_CONFIG.find(n => n.id === npcId);

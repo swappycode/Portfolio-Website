@@ -227,7 +227,7 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
   const groupRef = useRef<Group>(null);
   const modelGroupRef = useRef<Group>(null);
   const [isNearPlayer, setIsNearPlayer] = useState(false);
-  const { activeNPC, setActiveNPC, setDialogueOpen, isAutoWalking, dialogueOpen } = useGameStore();
+  const { activeNPC, setActiveNPC, setDialogueOpen, isAutoWalking, dialogueOpen, setVisitedNPC } = useGameStore();
 
   // Constants
   const INTERACTION_DIST = 4;
@@ -278,6 +278,7 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
       if (dist < INTERACTION_DIST) {
         if (activeNPC !== data.id) {
           setActiveNPC(data.id);
+          setVisitedNPC(data.id);
           setDialogueOpen(true);
         }
       } else if (dist > EXIT_DIST) {

@@ -41,6 +41,6 @@ app.get('/api/v1/profile', (req, res) => {
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
-app.listen(PORT, 'localhost', async () => {
-    console.log(`server is running on http://localhost:${PORT}`);
+app.listen(PORT, () => {
+    console.log(`server is running on port ${PORT}`);
 });

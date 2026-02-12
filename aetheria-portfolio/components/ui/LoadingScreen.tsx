@@ -34,6 +34,7 @@ export const LoadingScreen: React.FC = () => {
         >
           Loading Swapnil's World
         </div>
+        <div style={{ color: '#e8d5a3', marginTop: '10px', fontSize: '14px' }}>(Initializing 3D Engine)</div>
 
         {/* Ornament line */}
         <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-[#8b6914] to-transparent mb-8 opacity-50" />

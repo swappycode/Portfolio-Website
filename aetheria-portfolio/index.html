@@ -33,6 +33,7 @@
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
 
+  <script src="https://cdn.tailwindcss.com"></script>
   <title>Aetheria Portfolio - Swapnil's World</title>
 
   <style>
@@ -97,11 +98,65 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/index.css">
+  <style>
+    #debug-log {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: #ff4444;
+      padding: 20px;
+      font-family: monospace;
+      z-index: 10000;
+      overflow: auto;
+      display: none;
+    }
+  </style>
+  <script>
+    window.onerror = function (msg, url, line, col, error) {
+      const log = document.getElementById('debug-log');
+      if (log) {
+        log.style.display = 'block';
+        log.innerHTML += '<div>Error: ' + msg + '<br/>File: ' + url + '<br/>Line: ' + line + '</div><hr/>';
+      }
+      return false;
+    };
+    window.onunhandledrejection = function (event) {
+      const log = document.getElementById('debug-log');
+      if (log) {
+        log.style.display = 'block';
+        log.innerHTML += '<div>Promise Rejection: ' + event.reason + '</div><hr/>';
+      }
+    };
+  </script>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="debug-log"></div>
+  <div id="root">
+    <div
+      style="height: 100vh; display: flex; align-items: center; justify-content: center; background: #1a1520; color: #e8d5a3; font-family: sans-serif;">
+      <div style="text-align: center;">
+        <h2 style="margin-bottom: 20px;">Summoning Aetheria...</h2>
+        <div style="width: 200px; height: 4px; background: #333; margin: 0 auto; overflow: hidden;">
+          <div style="width: 50%; height: 100%; background: #e8d5a3; animation: pulse 2s infinite ease-in-out;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+    @keyframes pulse {
+      0% {
+        transform: translateX(-100%);
+      }
+
+      100% {
+        transform: translateX(200%);
+      }
+    }
+  </style>
   <script type="module" src="/index.tsx"></script>
   <noscript>
     <div

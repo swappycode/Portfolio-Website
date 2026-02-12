@@ -7,6 +7,9 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "handle": "filesystem"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

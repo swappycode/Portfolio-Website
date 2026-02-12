@@ -13,7 +13,7 @@ interface PlayerProps {
 const CROSSFADE_DURATION = 0.3; // seconds for smooth blend
 
 const PlayerModelGLTF = ({ isMoving }: { isMoving: boolean }) => {
-  const { scene, animations } = useGLTF('/models/character.glb');
+  const { scene, animations } = useGLTF('/models/Character.glb');
   const mixerRef = useRef<AnimationMixer>();
   const idleActionRef = useRef<AnimationAction>();
   const walkActionRef = useRef<AnimationAction>();

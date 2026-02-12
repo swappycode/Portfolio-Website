@@ -148,7 +148,7 @@ const useRandomBushData = () => {
 // Component that tries to load external GLTF
 const GLTFTrees: React.FC<{ data: any[] }> = ({ data }) => {
   // Expects a model at /models/tree.glb
-  const { scene } = useGLTF('/models/tree.glb');
+  const { scene } = useGLTF('/models/Tree.glb');
 
   // Find the first mesh in the GLTF to use as geometry source
   const treeMesh = useMemo(() => {

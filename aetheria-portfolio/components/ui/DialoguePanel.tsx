@@ -5,12 +5,12 @@ import { NPCRole, ProjectItem } from '../../types';
 import { ApiService } from '../../services/api';
 
 export const DialoguePanel: React.FC = () => {
-  const { 
-    activeNPC, 
-    dialogueOpen, 
-    setDialogueOpen, 
-    projectCategory, 
-    setProjectCategory 
+  const {
+    activeNPC,
+    dialogueOpen,
+    setDialogueOpen,
+    projectCategory,
+    setProjectCategory
   } = useGameStore();
 
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -32,11 +32,11 @@ export const DialoguePanel: React.FC = () => {
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
       <div className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-xl max-w-2xl w-full mx-4 pointer-events-auto border-b-4 border-gray-200 transform transition-all animate-in fade-in zoom-in duration-300">
-        
+
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-4">
-            <div 
+            <div
               className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-inner"
               style={{ backgroundColor: npc.color }}
             >
@@ -47,7 +47,7 @@ export const DialoguePanel: React.FC = () => {
               <p className="text-sm text-gray-500 font-semibold tracking-wider uppercase">{npc.role.replace('_', ' ')}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setDialogueOpen(false)}
             className="text-gray-400 hover:text-gray-600 transition-colors p-2"
           >
@@ -75,13 +75,13 @@ export const DialoguePanel: React.FC = () => {
           {npc.role === NPCRole.PROJECTS && (
             <div>
               <div className="flex gap-4 mb-6 border-b border-gray-200 pb-2">
-                <button 
+                <button
                   onClick={() => setProjectCategory('GAME_DEV')}
                   className={`pb-2 px-1 text-sm font-bold transition-colors ${projectCategory === 'GAME_DEV' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   Game Dev
                 </button>
-                <button 
+                <button
                   onClick={() => setProjectCategory('SDE')}
                   className={`pb-2 px-1 text-sm font-bold transition-colors ${projectCategory === 'SDE' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                 >

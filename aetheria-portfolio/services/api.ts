@@ -2,12 +2,17 @@ import { ProjectItem } from '../types';
 
 // Get API base URL from environment variables
 const getApiBaseUrl = () => {
+  // Check for environment variable first (set in Vercel dashboard)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
   // Fallback: Check if we're in development mode using hostname
   if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
     return 'http://localhost:3001';
   }
   
-  // In production, use empty string for same-origin
+  // In production without env var, use empty string for same-origin
   return '';
 };
 

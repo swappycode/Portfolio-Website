@@ -127,3 +127,93 @@
   border-top: 1px solid #e5e7eb;
   margin: 2rem 0;
 }
+
+/* ═══ RPG Panel — Dark-themed markdown ═══ */
+.rpg-markdown h1,
+.rpg-markdown h2,
+.rpg-markdown h3,
+.rpg-markdown h4 {
+  color: #e8d5a3;
+  margin: 1em 0 0.4em;
+  font-weight: 700;
+}
+
+.rpg-markdown h1 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid rgba(200, 160, 80, 0.2);
+  padding-bottom: 0.3rem;
+}
+
+.rpg-markdown h2 {
+  font-size: 1rem;
+}
+
+.rpg-markdown h3 {
+  font-size: 0.9rem;
+}
+
+.rpg-markdown p {
+  margin: 0.5em 0;
+}
+
+.rpg-markdown a {
+  color: #c8a050;
+  text-decoration: underline;
+}
+
+.rpg-markdown code {
+  background: rgba(200, 160, 80, 0.08);
+  border: 1px solid rgba(200, 160, 80, 0.15);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.85em;
+  color: #c8b890;
+}
+
+.rpg-markdown pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(200, 160, 80, 0.15);
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+
+.rpg-markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #c8b890;
+}
+
+.rpg-markdown ul,
+.rpg-markdown ol {
+  padding-left: 1.2rem;
+  margin: 0.5em 0;
+}
+
+.rpg-markdown li {
+  margin: 0.2em 0;
+}
+
+.rpg-markdown blockquote {
+  border-left: 3px solid rgba(200, 160, 80, 0.4);
+  padding-left: 10px;
+  color: #8b7d6b;
+  margin: 0.6em 0;
+  font-style: italic;
+}
+
+.rpg-markdown img {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid rgba(200, 160, 80, 0.2);
+  margin: 0.5em 0;
+}
+
+/* RPG Spinner */
+@keyframes rpg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

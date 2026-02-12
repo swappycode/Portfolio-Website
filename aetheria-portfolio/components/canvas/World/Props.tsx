@@ -87,7 +87,6 @@ const useRandomTreeData = () => {
       });
     }
 
-    console.log(`Spawned ${trees.length} trees after ${attempts} attempts`);
     return trees;
   }, []);
 };
@@ -142,7 +141,6 @@ const useRandomBushData = () => {
       });
     }
 
-    console.log(`Spawned ${bushes.length} bushes after ${attempts} attempts`);
     return bushes;
   }, []);
 };
@@ -349,7 +347,6 @@ const useRandomFallenTreeData = () => {
       });
     }
 
-    console.log(`Spawned ${fallenTrees.length} fallen trees after ${attempts} attempts`);
     return fallenTrees;
   }, []);
 };
@@ -444,7 +441,6 @@ const useRandomDeadTreeData = () => {
       });
     }
 
-    console.log(`Spawned ${deadTrees.length} dead trees after ${attempts} attempts`);
     return deadTrees;
   }, []);
 };
@@ -543,7 +539,6 @@ const useRandomRockData = () => {
       });
     }
 
-    console.log(`Spawned ${rocks.length} rocks after ${attempts} attempts`);
     return rocks;
   }, []);
 };

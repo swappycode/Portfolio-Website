@@ -22,11 +22,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Calculate the target rotation for the world so NPC is at (0, Radius, 0)
     // Actually, logic is handled in Scene, we just set flag here
     // But for a robust calculation, we need the NPC's base position.
-    
+
     // Simplification: We just tell the renderer "Go to this NPC" 
     // and let the Scene component calculate the Quaternion.
-    set({ 
-      isAutoWalking: true, 
+    set({
+      isAutoWalking: true,
       activeNPC: npcId,
       dialogueOpen: false // Close dialogue while moving
     });
@@ -35,6 +35,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   cancelAutoWalk: () => set({ isAutoWalking: false, targetRotationQuaternion: null }),
 
   setDialogueOpen: (isOpen) => set({ dialogueOpen: isOpen }),
-  
+
   setProjectCategory: (category) => set({ projectCategory: category })
 }));

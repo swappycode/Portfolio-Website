@@ -78,7 +78,7 @@ export const NPC_CONFIG: NPCData[] = [
 ];
 
 export const COLORS = {
-  sky: '#87CEEB',
+  sky: '#c8dff5',
   ground: '#9be685', // bright pastel green
   path: '#eaddcf',
   water: '#4fc3f7',

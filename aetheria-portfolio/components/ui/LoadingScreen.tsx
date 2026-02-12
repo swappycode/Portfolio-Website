@@ -24,21 +24,39 @@ export const LoadingScreen: React.FC = () => {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 text-white transition-opacity duration-700 ${
-        isFading ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-[#1a1520] text-[#e8d5a3] transition-opacity duration-700 ${isFading ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
     >
-      <div className="w-[320px] sm:w-[420px] text-center">
-        <div className="text-2xl font-bold tracking-wide">Loading Aetheria</div>
-        <div className="mt-4 h-2 w-full rounded-full bg-white/10 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 transition-[width] duration-300"
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          />
+      <div className="w-[320px] sm:w-[420px] text-center flex flex-col items-center">
+        {/* RPG Title */}
+        <div className="text-3xl font-bold tracking-wider uppercase text-[#e8d5a3] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-8"
+          style={{ fontFamily: "'Cinzel', serif", textShadow: '0 0 10px rgba(200,160,80,0.3)' }}
+        >
+          Loading Swapnil's World
         </div>
-        <div className="mt-2 text-sm text-white/70">{Math.round(progress)}%</div>
-        <div className="mt-4 text-xs text-white/50">
-          Preparing world assets...
+
+        {/* Ornament line */}
+        <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-[#8b6914] to-transparent mb-8 opacity-50" />
+
+        {/* Progress Bar Container */}
+        <div className="relative w-full h-3 bg-[#0a0810] border border-[#8b6914]/30 rounded-full overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+          {/* Progress Fill */}
+          <div
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#8b6914] via-[#c8a050] to-[#8b6914] transition-[width] duration-300 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%`, boxShadow: '0 0 10px rgba(200,160,80,0.4)' }}
+          />
+          {/* Shine effect */}
+          <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent)] animate-[shimmer_2s_infinite]" />
+        </div>
+
+        {/* Percentage */}
+        <div className="mt-4 text-sm font-mono text-[#9e8e7a] tracking-widest">
+          {Math.round(progress)}%
+        </div>
+
+        {/* Tips */}
+        <div className="mt-6 text-xs text-[#6b5e50] italic animate-pulse">
+          Summoning assets from the void...
         </div>
       </div>
     </div>

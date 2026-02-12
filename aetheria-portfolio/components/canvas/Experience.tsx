@@ -1,53 +1,94 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, Environment, KeyboardControls, Preload } from '@react-three/drei';
+import { PerspectiveCamera, Preload } from '@react-three/drei';
 import { World } from './World/World';
 import { Player } from './Player/Player';
 import { AnimeSky } from './Sky/AnimeSky';
-import { FloatingCard } from '../ui/FloatingCard';
-import { WORLD_RADIUS, CAMERA_DISTANCE, CAMERA_HEIGHT, COLORS } from '../../config/world.config';
+import { WORLD_RADIUS, CAMERA_DISTANCE, CAMERA_HEIGHT } from '../../config/world.config';
 import { useGameStore } from '../../store/gameStore';
-import { Vector3, Euler, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
+import { Vector3, Quaternion, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 
-// Custom hook to bridge KeyboardControls with our loop
-function InputHandler({ setInput }: { setInput: (i: any) => void }) {
-  const keys = {
+interface InputState {
+  forward: boolean;
+  backward: boolean;
+  left: boolean;
+  right: boolean;
+}
+
+// Custom hook to bridge KeyboardControls and Joystick with our loop
+function InputHandler({ setInput }: { setInput: (i: InputState) => void }) {
+  const keysRef = useRef<InputState>({
     forward: false,
     backward: false,
     left: false,
     right: false
-  };
+  });
 
   useEffect(() => {
     const handleDown = (e: KeyboardEvent) => {
-      if (e.key === 'w' || e.key === 'ArrowUp') keys.forward = true;
-      if (e.key === 's' || e.key === 'ArrowDown') keys.backward = true;
-      if (e.key === 'a' || e.key === 'ArrowLeft') keys.left = true;
-      if (e.key === 'd' || e.key === 'ArrowRight') keys.right = true;
-      setInput({ ...keys });
+      let changed = false;
+      if ((e.key === 'w' || e.key === 'ArrowUp') && !keysRef.current.forward) {
+        keysRef.current.forward = true;
+        changed = true;
+      }
+      if ((e.key === 's' || e.key === 'ArrowDown') && !keysRef.current.backward) {
+        keysRef.current.backward = true;
+        changed = true;
+      }
+      if ((e.key === 'a' || e.key === 'ArrowLeft') && !keysRef.current.left) {
+        keysRef.current.left = true;
+        changed = true;
+      }
+      if ((e.key === 'd' || e.key === 'ArrowRight') && !keysRef.current.right) {
+        keysRef.current.right = true;
+        changed = true;
+      }
+      if (changed) setInput({ ...keysRef.current });
     };
     const handleUp = (e: KeyboardEvent) => {
-      if (e.key === 'w' || e.key === 'ArrowUp') keys.forward = false;
-      if (e.key === 's' || e.key === 'ArrowDown') keys.backward = false;
-      if (e.key === 'a' || e.key === 'ArrowLeft') keys.left = false;
-      if (e.key === 'd' || e.key === 'ArrowRight') keys.right = false;
-      setInput({ ...keys });
+      let changed = false;
+      if ((e.key === 'w' || e.key === 'ArrowUp') && keysRef.current.forward) {
+        keysRef.current.forward = false;
+        changed = true;
+      }
+      if ((e.key === 's' || e.key === 'ArrowDown') && keysRef.current.backward) {
+        keysRef.current.backward = false;
+        changed = true;
+      }
+      if ((e.key === 'a' || e.key === 'ArrowLeft') && keysRef.current.left) {
+        keysRef.current.left = false;
+        changed = true;
+      }
+      if ((e.key === 'd' || e.key === 'ArrowRight') && keysRef.current.right) {
+        keysRef.current.right = false;
+        changed = true;
+      }
+      if (changed) setInput({ ...keysRef.current });
     };
+
+    // Handle joystick input from mobile
+    const handleJoystickInput = (e: CustomEvent<InputState>) => {
+      keysRef.current = { ...e.detail };
+      setInput({ ...e.detail });
+    };
+
     window.addEventListener('keydown', handleDown);
     window.addEventListener('keyup', handleUp);
+    window.addEventListener('joystickinput' as any, handleJoystickInput);
+    
     return () => {
       window.removeEventListener('keydown', handleDown);
       window.removeEventListener('keyup', handleUp);
-    }
-  }, []);
+      window.removeEventListener('joystickinput' as any, handleJoystickInput);
+    };
+  }, [setInput]);
   return null;
 }
 
 const CameraRig: React.FC<{
   isAutoWalking: boolean;
   cameraRef: React.RefObject<ThreePerspectiveCamera>;
-  onCameraUpdate: (position: Vector3, rotation: Euler) => void;
-}> = ({ isAutoWalking, cameraRef, onCameraUpdate }) => {
+}> = ({ isAutoWalking, cameraRef }) => {
   const { camera } = useThree();
   const cameraLookAtRef = useRef(new Vector3(0, WORLD_RADIUS + 0.8, 0));
   const CAMERA_SMOOTHING = 3.5;
@@ -78,8 +119,6 @@ const CameraRig: React.FC<{
     cam.position.lerp(targetPos, t);
     cameraLookAtRef.current.lerp(targetLookAt, t);
     cam.lookAt(cameraLookAtRef.current);
-
-    onCameraUpdate(cam.position.clone(), cam.rotation.clone());
   });
 
   return null;
@@ -88,8 +127,6 @@ const CameraRig: React.FC<{
 export const Experience: React.FC = () => {
   const [input, setInput] = useState({ forward: false, backward: false, left: false, right: false });
   const [rotationVelocity, setRotationVelocity] = useState({ x: 0, y: 0, z: 0 });
-  const [cameraPosition, setCameraPosition] = useState(new Vector3());
-  const [cameraRotation, setCameraRotation] = useState(new Euler());
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
 
   // FIX: Extract hook from logical OR expression to ensure consistent execution order
@@ -115,48 +152,33 @@ export const Experience: React.FC = () => {
       <CameraRig
         isAutoWalking={isAutoWalking}
         cameraRef={cameraRef}
-        onCameraUpdate={(pos, rot) => {
-          setCameraPosition(pos);
-          setCameraRotation(rot);
-        }}
       />
 
-      {/* Lighting */}
-      <ambientLight intensity={2} color="#ffffff" />
+      {/* Lighting — warm anime golden-hour */}
+      <ambientLight intensity={1.4} color="#ffeedd" />
+      <hemisphereLight args={['#87CEEB', '#b4e88c', 0.5]} />
       <directionalLight
         castShadow
         position={[10, 20, 10]}
-        intensity={1.5}
+        intensity={1.8}
+        color="#fff5e6"
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0001}
       >
         <orthographicCamera attach="shadow-camera" args={[-20, 20, 20, -20]} />
       </directionalLight>
 
-
-
-
-
-
-      {/* Anime Sky Shader - Beautiful Dawn Theme */}
+      {/* Anime Sky */}
       <AnimeSky
-        radius={150}            // Smaller radius for better color visibility
-        sunPosition={new Vector3(20, 30, -30)}  // Higher sun position for dawn
-        colorTop="#fff5ec"      // Light blue (top)
-        colorMiddle="#2ab0ee"   // Medium purple (middle)
-        colorBottom="#fcf800"   // Pink (bottom)
-        sunColor="#f700ff"      // Golden yellow sun
-        intensity={1.0}
+        radius={150}
+        sunPosition={new Vector3(30, 25, -20)}
       />
 
-      {/* Fog for depth */}
-      <fog attach="fog" args={[COLORS.sky, 5, 25]} /> {/* Adjusted fog for closer view */}
+      {/* Fog for depth — soft blue matching sky horizon */}
+      <fog attach="fog" args={['#c8dff5', 8, 30]} />
 
       <World input={input} onRotationVelocityChange={setRotationVelocity} />
       <Player isMoving={isMoving} rotationVelocity={rotationVelocity} />
-
-      {/* Floating Card System */}
-      <FloatingCard cameraPosition={cameraPosition} cameraRotation={cameraRotation} />
 
       <Preload all />
     </Canvas>

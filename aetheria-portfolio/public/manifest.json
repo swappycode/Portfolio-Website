@@ -1,0 +1,42 @@
+{
+  "name": "Aetheria Portfolio - Swapnil's World",
+  "short_name": "Aetheria",
+  "description": "An interactive 3D portfolio featuring game development and software engineering projects.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#1a1520",
+  "theme_color": "#1a1520",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["portfolio", "games", "development"],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.jpg",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-mobile.jpg",
+      "sizes": "750x1334",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    }
+  ]
+}

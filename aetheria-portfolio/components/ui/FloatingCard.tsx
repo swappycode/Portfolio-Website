@@ -1,677 +1,670 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Html, Text } from '@react-three/drei';
-import { Vector3, Quaternion, Euler } from 'three';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { NPC_CONFIG } from '../../config/world.config';
-import { NPCRole, ProjectItem, BackendApiResponse, GitHubProject, ItchGame } from '../../types';
+import { NPCRole, ProjectItem } from '../../types';
 import { ApiService } from '../../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Get API base URL for direct fetch calls
-const getApiBaseUrl = () => {
-  // Fallback: Check if we're in development mode using hostname
-  if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
-    return 'http://localhost:3001';
-  }
-  
-  // In production, use empty string for same-origin
-  return '';
+/* ═══════════════════════════════════════════════════════
+   HOLOGRAPHIC 3D PANEL — Interactive mouse-tracked card
+   ═══════════════════════════════════════════════════════
+   
+   Features:
+   • Mouse-tracked tilt (rotateX/Y based on cursor)
+   • Moving specular glare that follows mouse
+   • Depth layers with parallax (translateZ)
+   • Edge glow that shifts position
+   • Smooth spring-based return to neutral
+*/
+
+// ── RPG color tokens ──
+const RPG = {
+  bgDark: '#1a1520',
+  border: '#8b6914',
+  borderSoft: 'rgba(200,160,80,0.25)',
+  borderFaint: 'rgba(200,160,80,0.12)',
+  gold: '#c8a050',
+  goldBright: '#e8d5a3',
+  goldDim: '#8b7d6b',
+  textBody: '#c8b8a0',
+  textMuted: '#9e8e7a',
+  textDim: '#6b5e50',
 };
 
-const API_BASE_URL = getApiBaseUrl();
+// ── 3D tilt config ──
+const TILT_MAX = 8;        // max degrees of tilt
+const GLARE_OPACITY = 0.12; // glare intensity
 
-interface FloatingCardProps {
-  cameraPosition: Vector3;
-  cameraRotation: Euler;
-}
-
-export const FloatingCard: React.FC<FloatingCardProps> = ({ cameraPosition, cameraRotation }) => {
+export const FloatingCard: React.FC = () => {
   const { activeNPC, dialogueOpen, projectCategory, setProjectCategory } = useGameStore();
-  const rightGroupRef = useRef<THREE.Group>(null);
-  const leftGroupRef = useRef<THREE.Group>(null);
-  const readmeGroupRef = useRef<THREE.Group>(null);
+
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const [scale, setScale] = useState(0);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
-  const [detailsProject, setDetailsProject] = useState<ProjectItem | null>(null);
-  const [detailsScale, setDetailsScale] = useState(0);
-  const [readmeProject, setReadmeProject] = useState<ProjectItem | null>(null);
-  const [readmeScale, setReadmeScale] = useState(0);
   const [readmeContent, setReadmeContent] = useState<string>('');
   const [isFetchingReadme, setIsFetchingReadme] = useState(false);
-  const [gameDetail, setGameDetail] = useState<ProjectItem & { readme?: string } | null>(null);
+  const [showReadme, setShowReadme] = useState(false);
+  const [animateIn, setAnimateIn] = useState(false);
 
-  const CARD_SIZE = { w: 2.5, h: 1.8, d: 0.2 };
-  const BORDER_SIZE = { w: 2.6, h: 1.9, d: 0.1 };
-  const PANEL_PX_PER_UNIT = 120;
-  const PANEL_SIZE_PX = {
-    w: CARD_SIZE.w * PANEL_PX_PER_UNIT,
-    h: CARD_SIZE.h * PANEL_PX_PER_UNIT
-  };
-  const PANEL_DISTANCE_FACTOR = 400 / PANEL_PX_PER_UNIT;
-  // Ensure UI cards render on top of world geometry (trees/props) to avoid occlusion.
-  const UI_RENDER_ORDER = 10_000;
-  const HTML_Z_INDEX_RANGE: [number, number] = [10_000, 0];
+  // 3D tilt state
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [glarePos, setGlarePos] = useState({ x: 50, y: 50 });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>(0);
 
   const npc = NPC_CONFIG.find(n => n.id === activeNPC);
+  const isProjects = npc?.role === NPCRole.PROJECTS;
 
-  // Calculate screen-side position relative to camera
-  const rightCardPosition = useMemo(() => {
-    if (!dialogueOpen || !npc) return new Vector3(0, 0, 0);
+  // ── Global mouse tracking — tilts even when cursor is outside the panel ──
+  useEffect(() => {
+    if (!dialogueOpen) return;
 
-    // Position card to the upper-right of the player to avoid blocking the character
-    // Larger x/z values push it to the side and a bit farther from the camera
-    const offset = new Vector3(2.4, 1.2, -6); // x: right, y: up, z: back
-    
-    // Apply camera rotation to maintain screen-relative position
-    const rotation = new Quaternion();
-    rotation.setFromEuler(cameraRotation);
-    offset.applyQuaternion(rotation);
-    
-    return cameraPosition.clone().add(offset);
-  }, [dialogueOpen, npc, cameraPosition, cameraRotation]);
+    const AMBIENT_STRENGTH = 0.3; // 30% tilt when outside panel
+    const DIRECT_STRENGTH = 0.4;  // 40% tilt when hovering panel
 
-  const leftCardPosition = useMemo(() => {
-    if (!dialogueOpen || !npc) return new Vector3(0, 0, 0);
-    if (npc.role !== NPCRole.PROJECTS || !detailsProject) return new Vector3(0, 0, 0);
+    const onMouseMove = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
 
-    // Mirror the right panel to the left side when showing details
-    const offset = new Vector3(-2.4, 1.2, -6);
-    const rotation = new Quaternion();
-    rotation.setFromEuler(cameraRotation);
-    offset.applyQuaternion(rotation);
+      // Normalize relative to card center
+      const normalX = (e.clientX - centerX) / (rect.width / 2);
+      const normalY = (e.clientY - centerY) / (rect.height / 2);
 
-    return cameraPosition.clone().add(offset);
-  }, [dialogueOpen, npc, detailsProject, cameraPosition, cameraRotation]);
+      // Check if mouse is over the card
+      const isOver = e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom;
 
-  // Calculate middle position for README panel
-  const readmeCardPosition = useMemo(() => {
-    if (!dialogueOpen || !npc) return new Vector3(0, 0, 0);
-    if (npc.role !== NPCRole.PROJECTS || !readmeProject) return new Vector3(0, 0, 0);
+      // Full strength on card, dampened outside
+      const strength = isOver ? DIRECT_STRENGTH : AMBIENT_STRENGTH;
 
-    // Position README panel in the middle of the screen
-    const offset = new Vector3(0, 1.5, -5);
-    const rotation = new Quaternion();
-    rotation.setFromEuler(cameraRotation);
-    offset.applyQuaternion(rotation);
+      // Clamp after strength — outside can go beyond -1..1 but we dampen
+      const clampedX = Math.max(-1, Math.min(1, normalX));
+      const clampedY = Math.max(-1, Math.min(1, normalY));
 
-    return cameraPosition.clone().add(offset);
-  }, [dialogueOpen, npc, readmeProject, cameraPosition, cameraRotation]);
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        setTilt({
+          x: -clampedY * TILT_MAX * strength,
+          y: clampedX * TILT_MAX * strength,
+        });
+        setGlarePos({
+          x: (clampedX + 1) * 50,
+          y: (clampedY + 1) * 50,
+        });
+      });
+    };
 
-  // Fetch projects when NPC changes
+    window.addEventListener('mousemove', onMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [dialogueOpen]);
+
+  // Animate in
+  useEffect(() => {
+    if (dialogueOpen && npc) {
+      requestAnimationFrame(() => setAnimateIn(true));
+    } else {
+      setAnimateIn(false);
+    }
+  }, [dialogueOpen, npc]);
+
+  // Fetch projects
   useEffect(() => {
     if (activeNPC && npc?.role === NPCRole.PROJECTS && dialogueOpen) {
       setLoading(true);
+      setSelectedProject(null);
+      setShowReadme(false);
       ApiService.getProjects(projectCategory)
         .then(setProjects)
         .finally(() => setLoading(false));
     }
   }, [activeNPC, projectCategory, dialogueOpen, npc?.role]);
 
-  // Reset details panel when context changes
+  // Reset on close
   useEffect(() => {
-    setSelectedProject(null);
-    setDetailsProject(null);
-    setDetailsScale(0);
-  }, [activeNPC, projectCategory, dialogueOpen, npc?.role]);
-
-  // Handle visibility state changes
-  useEffect(() => {
-    console.log('FloatingCard state change:', { dialogueOpen, npcId: npc?.id, isVisible });
-    if (dialogueOpen && npc) {
-      setIsVisible(true);
-      // Animate scale from 0 to 1
-      setScale(0);
-      const timer = setTimeout(() => setScale(1), 50);
-      return () => clearTimeout(timer);
-    } else {
-      // Animate scale from 1 to 0
-      setScale(0);
-      const timer = setTimeout(() => setIsVisible(false), 300);
-      return () => clearTimeout(timer);
+    if (!dialogueOpen) {
+      setSelectedProject(null);
+      setShowReadme(false);
+      setReadmeContent('');
     }
-  }, [dialogueOpen, npc]);
+  }, [dialogueOpen]);
 
-  const openProjectDetails = (project: ProjectItem) => {
-    setSelectedProject(project);
-    setDetailsProject(project);
-    setDetailsScale(0);
-    setTimeout(() => setDetailsScale(1), 50);
-  };
-
-  const closeProjectDetails = () => {
-    setSelectedProject(null);
-    setDetailsScale(0);
-    setTimeout(() => setDetailsProject(null), 250);
-  };
-
-  // Handle ESC key to close dialogue
+  // ESC key — cascading close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && dialogueOpen) {
-        useGameStore.getState().setDialogueOpen(false);
+        if (showReadme) setShowReadme(false);
+        else if (selectedProject) setSelectedProject(null);
+        else useGameStore.getState().setDialogueOpen(false);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dialogueOpen]);
+  }, [dialogueOpen, showReadme, selectedProject]);
 
-  // Animation logic
-  useFrame((state, delta) => {
-    if (!npc) return;
+  const closePanel = () => useGameStore.getState().setDialogueOpen(false);
 
-    if (rightGroupRef.current) {
-      const targetPosition = rightCardPosition;
-      const currentPosition = rightGroupRef.current.position;
+  const openProjectDetails = (project: ProjectItem) => {
+    setSelectedProject(project);
+    setShowReadme(false);
+  };
 
-      // Smooth interpolation for position
-      currentPosition.lerp(targetPosition, 5 * delta);
-
-      // Always face the camera (billboard effect)
-      rightGroupRef.current.lookAt(cameraPosition);
-
-      // Apply scale animation (only if dialogue is open, otherwise show at full scale for testing)
-      if (dialogueOpen) {
-        rightGroupRef.current.scale.setScalar(scale);
+  const fetchReadme = async (project: ProjectItem) => {
+    setShowReadme(true);
+    setIsFetchingReadme(true);
+    try {
+      if (projectCategory === 'GAME_DEV') {
+        const slug = project.slug || project.id;
+        const gameDetail = await ApiService.getItchGameDetail(slug);
+        setReadmeContent(gameDetail.readme || 'No README available.');
       } else {
-        // For testing, show at full scale when not in dialogue
-        rightGroupRef.current.scale.setScalar(1);
+        setReadmeContent('GitHub README fetching coming soon.');
       }
-
-      // Debug: Log card position and scale
-      if (Math.random() < 0.1) {
-        console.log('Card position:', rightGroupRef.current.position.toArray(), 'Scale:', rightGroupRef.current.scale.x);
-      }
-
-      // Slight rotation to make it more dynamic
-      rightGroupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+    } catch {
+      setReadmeContent('Error loading README.');
+    } finally {
+      setIsFetchingReadme(false);
     }
+  };
 
-    if (leftGroupRef.current) {
-      const targetPosition = leftCardPosition;
-      const currentPosition = leftGroupRef.current.position;
-      currentPosition.lerp(targetPosition, 5 * delta);
-      leftGroupRef.current.lookAt(cameraPosition);
+  if (!dialogueOpen || !npc) return null;
 
-      const s = dialogueOpen && detailsProject ? detailsScale : 0;
-      leftGroupRef.current.scale.setScalar(s);
-      leftGroupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-    }
-
-    // README panel animation logic
-    if (readmeGroupRef.current && readmeProject) {
-      const targetPosition = readmeCardPosition;
-      const currentPosition = readmeGroupRef.current.position;
-      currentPosition.lerp(targetPosition, 5 * delta);
-      readmeGroupRef.current.lookAt(cameraPosition);
-
-      const s = dialogueOpen && readmeProject ? readmeScale : 0;
-      readmeGroupRef.current.scale.setScalar(s);
-      readmeGroupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-    }
-  });
-
-  // Temporary test: force visibility for debugging
-  // if (!isVisible || !npc) return null;
-  
-  // For now, let's always render if there's an NPC to test positioning
-  if (!npc) return null;
+  // 3D transform string
+  const transform3D = animateIn
+    ? `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(1)`
+    : 'perspective(1200px) rotateX(12deg) rotateY(0deg) scale(0.85)';
 
   return (
-    <>
-    <group ref={rightGroupRef}>
-      {/* Main Card Body */}
-      <mesh position={[0, 0, 0]} castShadow receiveShadow renderOrder={UI_RENDER_ORDER}>
-        <boxGeometry args={[CARD_SIZE.w, CARD_SIZE.h, CARD_SIZE.d]} />
-        <meshStandardMaterial 
-          color="#ffffff" 
-          transparent 
-          opacity={0.95}
-          roughness={0.1}
-          metalness={0.1}
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      pointerEvents: 'none',
+      fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif",
+    }}>
+      {/* Backdrop */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'auto',
+        background: 'radial-gradient(ellipse at center, rgba(10,6,20,0.5) 0%, rgba(5,3,12,0.7) 100%)',
+        opacity: animateIn ? 1 : 0,
+        transition: 'opacity 0.4s ease',
+      }} onClick={closePanel} />
 
-      {/* Card Border Glow */}
-      <mesh position={[0, 0, 0.1]} renderOrder={UI_RENDER_ORDER + 1}>
-        <boxGeometry args={[BORDER_SIZE.w, BORDER_SIZE.h, BORDER_SIZE.d]} />
-        <meshBasicMaterial 
-          color={npc.color} 
-          transparent 
-          opacity={0.3}
-          side={2} // DoubleSide
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Content via HTML overlay - attached to the 3D card */}
-      <Html
-        position={[0, 0, 0.2]}
-        center
-        transform
-        distanceFactor={PANEL_DISTANCE_FACTOR}
-        occlude={false}
-        zIndexRange={HTML_Z_INDEX_RANGE}
+      {/* ═══ 3D HOLOGRAPHIC CARD ═══ */}
+      <div
+        ref={cardRef}
+        style={{
+          position: 'relative',
+          pointerEvents: 'auto',
+          width: isProjects ? 'min(880px, 90vw)' : 'min(500px, 88vw)',
+          height: isProjects ? 'min(540px, 80vh)' : 'auto',
+          maxHeight: '80vh',
+          // 3D transform — smooth spring transition
+          transform: transform3D,
+          opacity: animateIn ? 1 : 0,
+          transition: 'transform 0.2s ease-out, opacity 0.35s ease',
+          transformStyle: 'preserve-3d' as const,
+          // Card face
+          background: 'linear-gradient(170deg, #1e1628 0%, #13101c 40%, #1a1225 100%)',
+          borderRadius: '16px',
+          border: `2px solid ${RPG.border}`,
+          boxShadow: `
+            0 ${6 + Math.abs(tilt.x) * 3}px ${35 + Math.abs(tilt.x) * 5}px rgba(0,0,0,0.6),
+            0 ${2 + Math.abs(tilt.x)}px ${10 + Math.abs(tilt.x) * 2}px rgba(0,0,0,0.4),
+            0 0 50px rgba(139,105,20,${0.18 + Math.abs(tilt.y) * 0.04}),
+            0 0 100px rgba(139,105,20,0.08),
+            inset 0 2px 0 rgba(200,160,80,0.18),
+            inset 0 -2px 4px rgba(0,0,0,0.4),
+            inset 2px 0 4px rgba(0,0,0,0.15),
+            inset -2px 0 4px rgba(0,0,0,0.15)
+          `,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column' as const,
+        }}
       >
-        <div 
-          className="bg-gradient-to-br from-white/95 to-gray-50/90 backdrop-blur-sm rounded-lg shadow-2xl border border-gray-200 overflow-hidden transition-all duration-300 flex flex-col"
-          style={{ 
-            width: `${PANEL_SIZE_PX.w}px`,
-            height: `${PANEL_SIZE_PX.h}px`,
-            opacity: dialogueOpen ? Math.min(scale * 1.2, 1) : 1 
-          }}
-        >
-          
-          {/* Header */}
-          <div className="flex justify-between items-start p-4 bg-gradient-to-r from-gray-50 to-transparent border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                style={{ backgroundColor: npc.color }}
-              >
-                {npc.name[0]}
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">{npc.name}</h2>
-                <p className="text-xs text-gray-500 font-semibold tracking-wider uppercase">{npc.role.replace('_', ' ')}</p>
-              </div>
+        {/* ── GLARE / SPECULAR REFLECTION — follows mouse ── */}
+        <div style={{
+          position: 'absolute',
+          inset: '-50%',
+          pointerEvents: 'none',
+          zIndex: 100,
+          background: `radial-gradient(
+            ellipse at ${glarePos.x}% ${glarePos.y}%,
+            rgba(255,240,200,${GLARE_OPACITY}) 0%,
+            rgba(255,240,200,0.04) 30%,
+            transparent 60%
+          )`,
+          mixBlendMode: 'overlay' as const,
+          transition: 'background 0.1s ease-out',
+        }} />
+
+        {/* ── EDGE LIGHT — shifts with tilt ── */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 99,
+          borderRadius: '16px',
+          border: '1px solid transparent',
+          background: `linear-gradient(${135 + tilt.y * 3}deg, rgba(200,160,80,${0.15 + Math.abs(tilt.y) * 0.05}) 0%, transparent 40%, transparent 60%, rgba(200,160,80,${0.1 + Math.abs(tilt.y) * 0.04}) 100%)`,
+          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude' as any,
+          padding: '2px',
+        }} />
+
+        {/* ── ORNAMENTAL TOP BAR with embossed ridge ── */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(200,160,80,0.15) 15%, rgba(200,160,80,0.5) 50%, rgba(200,160,80,0.15) 85%, transparent 100%)',
+          }} />
+          <div style={{
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.3) 85%, transparent 100%)',
+          }} />
+        </div>
+
+        {/* ── CORNER ORNAMENTS ── */}
+        {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(corner => {
+          const isTop = corner.includes('top');
+          const isLeft = corner.includes('left');
+          return (
+            <div key={corner} style={{
+              position: 'absolute',
+              [isTop ? 'top' : 'bottom']: '4px',
+              [isLeft ? 'left' : 'right']: '4px',
+              width: '16px', height: '16px',
+              pointerEvents: 'none', zIndex: 101,
+              borderTop: isTop ? '2px solid rgba(200,160,80,0.35)' : 'none',
+              borderBottom: !isTop ? '2px solid rgba(200,160,80,0.35)' : 'none',
+              borderLeft: isLeft ? '2px solid rgba(200,160,80,0.35)' : 'none',
+              borderRight: !isLeft ? '2px solid rgba(200,160,80,0.35)' : 'none',
+              borderRadius: corner === 'top-left' ? '14px 0 0 0' : corner === 'top-right' ? '0 14px 0 0' : corner === 'bottom-left' ? '0 0 0 14px' : '0 0 14px 0',
+            }} />
+          );
+        })}
+
+        {/* ═══ HEADER — at higher Z depth for parallax ═══ */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 18px 10px',
+          borderBottom: `1px solid ${RPG.borderFaint}`,
+          background: 'linear-gradient(180deg, rgba(200,160,80,0.06) 0%, transparent 100%)',
+          flexShrink: 0,
+          transform: 'translateZ(20px)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '8px',
+              background: `linear-gradient(135deg, ${npc.color}, ${npc.color}88)`,
+              border: '2px solid rgba(200,160,80,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 800, fontSize: '16px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              boxShadow: `0 0 12px ${npc.color}44`,
+            }}>{npc.name[0]}</div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: RPG.goldBright, letterSpacing: '0.4px' }}>{npc.name}</h2>
+              <p style={{ margin: 0, fontSize: '9px', color: RPG.goldDim, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase' as const }}>{npc.role.replace('_', ' ')}</p>
             </div>
-            <button 
-              onClick={() => useGameStore.getState().setDialogueOpen(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
+          <button onClick={closePanel} style={{
+            background: 'rgba(200,160,80,0.08)', border: `1px solid ${RPG.borderSoft}`, borderRadius: '6px',
+            color: RPG.goldDim, cursor: 'pointer', padding: '5px 7px', display: 'flex', alignItems: 'center', transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = RPG.goldBright; e.currentTarget.style.borderColor = 'rgba(200,160,80,0.5)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = RPG.goldDim; e.currentTarget.style.borderColor = RPG.borderSoft; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
 
-          {/* Content Area */}
-          <div className="flex-1 p-4 overflow-y-auto">
-            {/* Default Content */}
-            {npc.role !== NPCRole.PROJECTS && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-700 leading-relaxed">{npc.dialogue.intro}</p>
-                {npc.dialogue.details && (
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs text-gray-600">
-                    {npc.dialogue.details}
-                  </div>
-                )}
+        {/* ═══ CONTENT — recessed inner panel for 3D depth ═══ */}
+        <div style={{
+          flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0,
+          transform: 'translateZ(10px)',
+          margin: '0 6px', borderRadius: '8px',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%)',
+          boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.2), inset 0 -1px 3px rgba(200,160,80,0.04)',
+        }}>
+          {isProjects ? (
+            <ProjectsView
+              projects={projects} loading={loading}
+              projectCategory={projectCategory} setProjectCategory={setProjectCategory}
+              selectedProject={selectedProject} onSelectProject={openProjectDetails}
+              readmeContent={readmeContent} showReadme={showReadme}
+              isFetchingReadme={isFetchingReadme} onFetchReadme={fetchReadme}
+              onCloseReadme={() => setShowReadme(false)}
+              onBack={() => setSelectedProject(null)}
+              npcColor={npc.color}
+            />
+          ) : (
+            <GenericContent npc={npc} />
+          )}
+        </div>
+
+        {/* ═══ FOOTER — at higher Z depth ═══ */}
+        <div style={{
+          padding: '7px 18px', borderTop: `1px solid ${RPG.borderFaint}`,
+          textAlign: 'center' as const, fontSize: '10px', color: '#4a4050', flexShrink: 0,
+          background: 'linear-gradient(0deg, rgba(200,160,80,0.03) 0%, transparent 100%)',
+          transform: 'translateZ(20px)',
+        }}>
+          Press <span style={{
+            background: 'rgba(200,160,80,0.12)', border: `1px solid ${RPG.borderFaint}`, borderRadius: '3px',
+            padding: '1px 6px', fontFamily: 'monospace', color: RPG.goldDim, fontSize: '9px',
+          }}>ESC</span> or walk away to close
+        </div>
+
+        {/* ── HOLOGRAM SCANLINE EFFECT ── */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 98,
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(200,160,80,0.012) 2px, rgba(200,160,80,0.012) 4px)',
+          borderRadius: '16px',
+        }} />
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Generic NPC Content (About / Services / Contact)
+   ───────────────────────────────────────────── */
+const GenericContent: React.FC<{ npc: any }> = ({ npc }) => (
+  <div style={{
+    padding: '18px 22px', overflow: 'auto',
+    scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent',
+  }}>
+    <p style={{ color: RPG.textBody, fontSize: '14px', lineHeight: 1.75, margin: '0 0 14px' }}>{npc.dialogue.intro}</p>
+    {npc.dialogue.details && (
+      <div style={{
+        background: 'rgba(200,160,80,0.05)', border: `1px solid ${RPG.borderFaint}`,
+        borderRadius: '10px', padding: '14px 16px', color: RPG.textMuted, fontSize: '13px', lineHeight: 1.65,
+      }}>{npc.dialogue.details}</div>
+    )}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   Projects Panel — Grid + Detail Sidebar
+   ───────────────────────────────────────────── */
+interface ProjectsViewProps {
+  projects: ProjectItem[];
+  loading: boolean;
+  projectCategory: string;
+  setProjectCategory: (cat: any) => void;
+  selectedProject: ProjectItem | null;
+  onSelectProject: (p: ProjectItem) => void;
+  readmeContent: string;
+  showReadme: boolean;
+  isFetchingReadme: boolean;
+  onFetchReadme: (p: ProjectItem) => void;
+  onCloseReadme: () => void;
+  onBack: () => void;
+  npcColor: string;
+}
+
+const ProjectsView: React.FC<ProjectsViewProps> = ({
+  projects, loading, projectCategory, setProjectCategory,
+  selectedProject, onSelectProject, readmeContent, showReadme,
+  isFetchingReadme, onFetchReadme, onCloseReadme, onBack,
+}) => {
+  const TabBtn = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+    <button onClick={onClick} style={{
+      padding: '5px 14px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px',
+      textTransform: 'uppercase' as const, borderRadius: '5px',
+      border: active ? '1px solid rgba(200,160,80,0.45)' : '1px solid rgba(200,160,80,0.1)',
+      background: active ? 'linear-gradient(180deg, rgba(200,160,80,0.18) 0%, rgba(200,160,80,0.06) 100%)' : 'transparent',
+      color: active ? RPG.goldBright : RPG.textDim, cursor: 'pointer', transition: 'all 0.2s',
+    }}>{label}</button>
+  );
+
+  return (
+    <div style={{ display: 'flex', width: '100%', minHeight: 0, overflow: 'hidden' }}>
+      {/* LEFT: Project Grid */}
+      <div style={{
+        flex: selectedProject ? '0 0 52%' : '1',
+        display: 'flex', flexDirection: 'column' as const,
+        borderRight: selectedProject ? `1px solid ${RPG.borderFaint}` : 'none',
+        minHeight: 0, transition: 'flex 0.3s ease',
+      }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '6px', padding: '10px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
+          <TabBtn label="Game Dev" active={projectCategory === 'GAME_DEV'} onClick={() => setProjectCategory('GAME_DEV')} />
+          <TabBtn label="Software Eng" active={projectCategory === 'SDE'} onClick={() => setProjectCategory('SDE')} />
+        </div>
+
+        {/* Grid */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '10px', scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+              <div style={{ width: '26px', height: '26px', border: '3px solid rgba(200,160,80,0.2)', borderTopColor: RPG.gold, borderRadius: '50%', animation: 'rpg-spin 0.8s linear infinite' }} />
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: selectedProject ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+              gap: '8px',
+            }}>
+              {projects.map(project => (
+                <ProjectCard key={project.id} project={project} isSelected={selectedProject?.id === project.id} onClick={() => onSelectProject(project)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT: Detail Sidebar */}
+      {selectedProject && (
+        <div style={{ flex: '0 0 48%', display: 'flex', flexDirection: 'column' as const, minHeight: 0, overflow: 'hidden' }}>
+          {showReadme ? (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100%', minHeight: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
+                <span style={{ color: RPG.goldBright, fontSize: '11px', fontWeight: 700 }}>📖 README</span>
+                <button onClick={onCloseReadme} style={{
+                  fontSize: '10px', color: RPG.gold, background: 'rgba(200,160,80,0.08)',
+                  border: `1px solid ${RPG.borderSoft}`, borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600,
+                }}>← Back</button>
               </div>
-            )}
-
-            {/* Projects Specific Logic */}
-            {npc.role === NPCRole.PROJECTS && (
-              <div className="space-y-3">
-                <div className="flex gap-3 border-b border-gray-200 pb-2">
-                  <button 
-                    onClick={() => setProjectCategory('GAME_DEV')}
-                    className={`px-3 py-1 text-xs font-bold transition-colors rounded ${projectCategory === 'GAME_DEV' ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    Game Dev
-                  </button>
-                  <button 
-                    onClick={() => setProjectCategory('SDE')}
-                    className={`px-3 py-1 text-xs font-bold transition-colors rounded ${projectCategory === 'SDE' ? 'text-indigo-600 bg-indigo-50 border border-indigo-200' : 'text-gray-400 hover:text-gray-600'}`}
-                  >
-                    Software Eng
-                  </button>
-                </div>
-
-                {loading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', fontSize: '12px', lineHeight: 1.7, color: '#b0a090', scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent' }}>
+                {isFetchingReadme ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '30px' }}>
+                    <div style={{ width: '22px', height: '22px', border: '3px solid rgba(200,160,80,0.2)', borderTopColor: RPG.gold, borderRadius: '50%', animation: 'rpg-spin 0.8s linear infinite' }} />
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {projects.map(project => (
-                      <div
-                        key={project.id}
-                        onClick={() => openProjectDetails(project)}
-                        className={`p-2 rounded border transition-colors cursor-pointer group ${
-                          selectedProject?.id === project.id
-                            ? 'bg-indigo-50 border-indigo-200'
-                            : 'bg-white hover:bg-indigo-50 border-gray-100'
-                        }`}
-                      >
-                        {/* Project Image */}
-                        <div className="mb-2">
-                          <img 
-                            src={project.imageUrl || '/placeholder-image.jpg'} 
-                            alt={project.title}
-                            className="w-full h-16 object-cover rounded border border-gray-200"
-                            onError={(e) => {
-                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTIwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iNjAiIGZpbGw9IiM5YmE4YjMiLz4KICA8dGV4dCB4PSI2MCIgeT0iMzUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzIzMTgxOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBBdmFpbGFibGU8L3RleHQ+Cjwvc3ZnPgo=';
-                            }}
-                          />
-                        </div>
-                        <h3 className="font-medium text-gray-800 text-sm group-hover:text-indigo-700">{project.title}</h3>
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{project.description}</p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {project.tags.map(tag => (
-                            <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-1 py-0.5 rounded border border-gray-200">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                  <div className="rpg-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{readmeContent}</ReactMarkdown></div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent' }}>
+              {selectedProject.imageUrl && (
+                <div style={{ width: '100%', height: '150px', overflow: 'hidden', borderBottom: `1px solid ${RPG.borderFaint}` }}>
+                  <img src={selectedProject.imageUrl} alt={selectedProject.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
+              <div style={{ padding: '14px 16px' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: RPG.goldBright }}>{selectedProject.title}</h3>
+                <p style={{ margin: '0 0 12px', fontSize: '13px', lineHeight: 1.7, color: RPG.textMuted }}>{selectedProject.description}</p>
+
+                {selectedProject.tags?.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '5px', marginBottom: '14px' }}>
+                    {selectedProject.tags.map(tag => (
+                      <span key={tag} style={{
+                        fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
+                        background: 'rgba(200,160,80,0.06)', border: `1px solid ${RPG.borderFaint}`, color: RPG.goldDim, fontWeight: 600,
+                      }}>{tag}</span>
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
 
-          {/* Footer Hint */}
-          <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-center">
-            <p className="text-xs text-gray-400">Press <span className="font-mono bg-gray-200 px-1 rounded text-xs">ESC</span> or walk away to close</p>
-          </div>
-        </div>
-      </Html>
-
-      {/* Floating particles effect */}
-      <group position={[0, 2, 0.3]}>
-        <mesh renderOrder={UI_RENDER_ORDER + 2}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial
-            color={npc.color}
-            transparent
-            opacity={0.5}
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
-      </group>
-
-      {/* Subtle floating animation */}
-      <group position={[0, 0, 0]}>
-        <mesh position={[0, Math.sin(Date.now() * 0.002) * 0.1, 0]} renderOrder={UI_RENDER_ORDER + 2}>
-          <boxGeometry args={[0.05, 0.05, 0.05]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.3} depthTest={false} depthWrite={false} />
-        </mesh>
-      </group>
-    </group>
-
-    {/* Left-side project details panel */}
-    {npc.role === NPCRole.PROJECTS && detailsProject && (
-      <group ref={leftGroupRef}>
-        {/* Main Card Body */}
-        <mesh position={[0, 0, 0]} castShadow receiveShadow renderOrder={UI_RENDER_ORDER}>
-          <boxGeometry args={[CARD_SIZE.w, CARD_SIZE.h, CARD_SIZE.d]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            transparent
-            opacity={0.95}
-            roughness={0.1}
-            metalness={0.1}
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
-
-        {/* Card Border Glow */}
-        <mesh position={[0, 0, 0.1]} renderOrder={UI_RENDER_ORDER + 1}>
-          <boxGeometry args={[BORDER_SIZE.w, BORDER_SIZE.h, BORDER_SIZE.d]} />
-          <meshBasicMaterial
-            color={npc.color}
-            transparent
-            opacity={0.3}
-            side={2} // DoubleSide
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
-
-        <Html
-          position={[0, 0, 0.2]}
-          center
-          transform
-          distanceFactor={PANEL_DISTANCE_FACTOR}
-          occlude={false}
-          zIndexRange={HTML_Z_INDEX_RANGE}
-        >
-          <div
-            className="bg-gradient-to-br from-white/95 to-gray-50/90 backdrop-blur-sm rounded-lg shadow-2xl border border-gray-200 overflow-hidden transition-all duration-300 flex flex-col"
-            style={{
-              width: `${PANEL_SIZE_PX.w}px`,
-              height: `${PANEL_SIZE_PX.h}px`,
-              opacity: dialogueOpen ? Math.min(detailsScale * 1.2, 1) : 1
-            }}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-start p-4 bg-gradient-to-r from-gray-50 to-transparent border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                  style={{ backgroundColor: npc.color }}
-                >
-                  {detailsProject.title[0]}
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-800">Project</h2>
-                  <p className="text-xs text-gray-500 font-semibold tracking-wider uppercase">Details</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={closeProjectDetails}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded bg-indigo-50 border border-indigo-200"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => useGameStore.getState().setDialogueOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-              {/* Content */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">{detailsProject.title}</h3>
-                <p className="text-sm text-gray-700 leading-relaxed mt-2">{detailsProject.description}</p>
-              </div>
-
-              {detailsProject.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {detailsProject.tags.map(tag => (
-                    <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {detailsProject.link && (
-                <a
-                  href={detailsProject.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
-                >
-                  Open Project
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3h7m0 0v7m0-7L10 14" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10v11h11" />
-                  </svg>
-                </a>
-              )}
-
-              {/* README Button for both SDE and Game Dev Projects */}
-              {(projectCategory === 'SDE' || projectCategory === 'GAME_DEV') && (
-                <button
-                  onClick={async () => {
-                    setReadmeProject(detailsProject);
-                    setReadmeScale(0);
-                    setIsFetchingReadme(true);
-                    setTimeout(() => setReadmeScale(1), 50);
-                    
-                    try {
-                      if (projectCategory === 'SDE') {
-                        // For GitHub projects, we would need to implement a similar detail fetch
-                        // For now, show a message
-                        setReadmeContent('GitHub project README fetching not yet implemented in this component.');
-                      } else {
-                        // Game Dev projects (Itch.io) - use the proper API service
-                        const slug = detailsProject.slug || detailsProject.id;
-                        const gameDetail = await ApiService.getItchGameDetail(slug);
-                        
-                        if (gameDetail.readme) {
-                          setReadmeContent(gameDetail.readme);
-                        } else {
-                          setReadmeContent('No README available for this game.');
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Error fetching README:', error);
-                      setReadmeContent('Error loading README content.');
-                    } finally {
-                      setIsFetchingReadme(false);
-                    }
-                  }}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
-                >
-                  View README
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Footer Hint */}
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-center">
-              <p className="text-xs text-gray-400">Click <span className="font-mono bg-gray-200 px-1 rounded text-xs">Back</span> to return</p>
-            </div>
-          </div>
-        </Html>
-      </group>
-    )}
-
-    {/* Middle README panel */}
-    {npc.role === NPCRole.PROJECTS && readmeProject && (
-      <group ref={readmeGroupRef}>
-        {/* Main Card Body */}
-        <mesh position={[0, 0, 0]} castShadow receiveShadow renderOrder={UI_RENDER_ORDER}>
-          <boxGeometry args={[CARD_SIZE.w, CARD_SIZE.h, CARD_SIZE.d]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            transparent
-            opacity={0.95}
-            roughness={0.1}
-            metalness={0.1}
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
-
-        {/* Card Border Glow */}
-        <mesh position={[0, 0, 0.1]} renderOrder={UI_RENDER_ORDER + 1}>
-          <boxGeometry args={[BORDER_SIZE.w, BORDER_SIZE.h, BORDER_SIZE.d]} />
-          <meshBasicMaterial
-            color={npc.color}
-            transparent
-            opacity={0.3}
-            side={2} // DoubleSide
-            depthTest={false}
-            depthWrite={false}
-          />
-        </mesh>
-
-        <Html
-          position={[0, 0, 0.2]}
-          center
-          transform
-          distanceFactor={PANEL_DISTANCE_FACTOR}
-          occlude={false}
-          zIndexRange={HTML_Z_INDEX_RANGE}
-        >
-          <div
-            className="bg-gradient-to-br from-white/95 to-gray-50/90 backdrop-blur-sm rounded-lg shadow-2xl border border-gray-200 overflow-hidden transition-all duration-300 flex flex-col"
-            style={{
-              width: `${PANEL_SIZE_PX.w}px`,
-              height: `${PANEL_SIZE_PX.h}px`,
-              opacity: dialogueOpen ? Math.min(readmeScale * 1.2, 1) : 1
-            }}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-start p-4 bg-gradient-to-r from-gray-50 to-transparent border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                  style={{ backgroundColor: npc.color }}
-                >
-                  📖
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-800">README</h2>
-                  <p className="text-xs text-gray-500 font-semibold tracking-wider uppercase">{readmeProject.title}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setReadmeScale(0);
-                    setTimeout(() => setReadmeProject(null), 250);
-                  }}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded bg-indigo-50 border border-indigo-200"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => useGameStore.getState().setDialogueOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 p-4 overflow-y-auto">
-              {isFetchingReadme ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                  <p className="ml-2 text-sm text-gray-600">Loading README...</p>
-                </div>
-              ) : (
-                <div className="prose prose-sm max-w-none">
-                  {readmeContent ? (
-                    <div className="markdown-content">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {readmeContent}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No README content available for this project.</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+                  {selectedProject.link && selectedProject.link !== '#' && (
+                    <a href={selectedProject.link} target="_blank" rel="noreferrer" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px',
+                      fontSize: '11px', fontWeight: 700, color: RPG.bgDark,
+                      background: `linear-gradient(180deg, ${RPG.goldBright} 0%, ${RPG.gold} 100%)`,
+                      border: `1px solid ${RPG.gold}`, borderRadius: '6px', textDecoration: 'none',
+                      boxShadow: '0 2px 8px rgba(200,160,80,0.2)',
+                    }}>Open Project ↗</a>
                   )}
+                  <button onClick={() => onFetchReadme(selectedProject)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px',
+                    fontSize: '11px', fontWeight: 700, color: RPG.gold, background: 'rgba(200,160,80,0.08)',
+                    border: `1px solid ${RPG.borderSoft}`, borderRadius: '6px', cursor: 'pointer',
+                  }}>📖 README</button>
                 </div>
-              )}
+                <button onClick={onBack} style={{
+                  marginTop: '14px', fontSize: '10px', color: RPG.textDim, background: 'none',
+                  border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                }}>← Back to all projects</button>
+              </div>
             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
-            {/* Footer Hint */}
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-center">
-              <p className="text-xs text-gray-400">README content from GitHub repository</p>
-            </div>
-          </div>
-        </Html>
-      </group>
-    )}
-    </>
+/* ──────────────────────────────
+   Project Card — 3D hover effect
+   ────────────────────────────── */
+const ProjectCard: React.FC<{
+  project: ProjectItem;
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ project, isSelected, onClick }) => {
+  const [hovered, setHovered] = useState(false);
+  const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleCardMouse = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const normalX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const normalY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    setCardTilt({ x: -normalY * 8, y: normalX * 8 });
+  }, []);
+
+  return (
+    <div
+      ref={cardRef}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setCardTilt({ x: 0, y: 0 }); }}
+      onMouseMove={handleCardMouse}
+      style={{
+        position: 'relative',
+        background: isSelected
+          ? 'linear-gradient(180deg, rgba(200,160,80,0.14) 0%, rgba(200,160,80,0.04) 100%)'
+          : hovered
+            ? 'linear-gradient(180deg, rgba(30,22,40,0.95) 0%, rgba(22,16,30,0.98) 100%)'
+            : 'linear-gradient(180deg, rgba(26,21,32,0.8) 0%, rgba(19,16,28,0.9) 100%)',
+        border: isSelected ? '1px solid rgba(200,160,80,0.5)' : `1px solid ${RPG.borderFaint}`,
+        borderRadius: '10px',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        transition: hovered ? 'transform 0.1s ease-out, box-shadow 0.15s ease' : 'all 0.3s ease',
+        transform: hovered
+          ? `perspective(500px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg) scale(1.04)`
+          : 'perspective(500px) rotateX(0deg) rotateY(0deg) scale(1)',
+        boxShadow: isSelected
+          ? '0 4px 16px rgba(200,160,80,0.2), 0 0 20px rgba(200,160,80,0.08), inset 0 1px 0 rgba(200,160,80,0.15)'
+          : hovered
+            ? `0 ${10 + Math.abs(cardTilt.x)}px 25px rgba(0,0,0,0.5), 0 0 15px rgba(200,160,80,0.12), inset 0 1px 0 rgba(200,160,80,0.12)`
+            : '0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(200,160,80,0.06)',
+        transformStyle: 'preserve-3d' as const,
+      }}
+    >
+      {/* Thumbnail — properly fitted */}
+      <div style={{
+        width: '100%',
+        aspectRatio: '16/9',
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, #1a1225 0%, #0f0c18 100%)',
+        borderBottom: `1px solid ${RPG.borderFaint}`,
+        position: 'relative',
+      }}>
+        <img
+          src={project.imageUrl || ''}
+          alt={project.title}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            display: 'block',
+            opacity: hovered ? 1 : 0.85,
+            transition: 'opacity 0.3s ease, transform 0.3s ease',
+            transform: hovered ? 'scale(1.05)' : 'scale(1)',
+          }}
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.display = 'none';
+          }}
+        />
+        {/* Image overlay gradient  */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
+          background: 'linear-gradient(0deg, rgba(19,16,28,0.8) 0%, transparent 100%)',
+          pointerEvents: 'none',
+        }} />
+        {/* Inner bevel on image area */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(200,160,80,0.05)',
+          borderRadius: '10px 10px 0 0',
+        }} />
+      </div>
+
+      {/* Text content — raised layer */}
+      <div style={{
+        padding: '8px 10px 9px',
+        transform: 'translateZ(8px)',
+        position: 'relative',
+      }}>
+        <h4 style={{
+          margin: 0, fontSize: '11px', fontWeight: 700,
+          color: isSelected ? RPG.goldBright : hovered ? '#d4c4a4' : '#b8a890',
+          whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis',
+          transition: 'color 0.2s ease',
+        }}>{project.title}</h4>
+        <p style={{
+          margin: '4px 0 0', fontSize: '9px', color: RPG.textDim,
+          overflow: 'hidden', textOverflow: 'ellipsis',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+          lineHeight: 1.45,
+        }}>{project.description}</p>
+      </div>
+
+      {/* Specular glare — follows mouse on card */}
+      {hovered && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: `radial-gradient(ellipse at ${(cardTilt.y / 8 + 0.5) * 100}% ${(-cardTilt.x / 8 + 0.5) * 100}%, rgba(255,240,200,0.12) 0%, rgba(255,240,200,0.02) 40%, transparent 65%)`,
+          borderRadius: '10px',
+          mixBlendMode: 'overlay' as const,
+        }} />
+      )}
+
+      {/* Selected indicator glow ring */}
+      {isSelected && (
+        <div style={{
+          position: 'absolute', inset: '-1px', pointerEvents: 'none',
+          borderRadius: '11px',
+          border: '1px solid rgba(200,160,80,0.3)',
+          boxShadow: '0 0 10px rgba(200,160,80,0.1)',
+        }} />
+      )}
+    </div>
   );
 };

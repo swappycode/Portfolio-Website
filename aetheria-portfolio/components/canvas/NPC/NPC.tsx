@@ -51,8 +51,6 @@ const NPCModelGLTF: React.FC<{
 
     if (!targetAction || currentState === targetState) return;
 
-    console.log(`[NPC Anim] Crossfade: ${currentState} → ${targetState}`);
-
     // Reset target action
     targetAction.reset();
     targetAction.setEffectiveTimeScale(1);
@@ -85,8 +83,6 @@ const NPCModelGLTF: React.FC<{
   useEffect(() => {
     if (!animations || animations.length === 0) return;
 
-    console.log('[NPC Anim] Available animations:', animations.map((a, i) => `${i}: "${a.name}"`));
-
     const mixer = new AnimationMixer(scene);
     mixerRef.current = mixer;
 
@@ -101,20 +97,17 @@ const NPCModelGLTF: React.FC<{
     if (idleClip) {
       actions.idle = mixer.clipAction(idleClip);
       actions.idle.setLoop(LoopRepeat, Infinity);
-      console.log('[NPC Anim] Idle clip:', idleClip.name);
     }
 
     if (waveClip) {
       actions.wave = mixer.clipAction(waveClip);
       actions.wave.setLoop(LoopOnce, 1);
       actions.wave.clampWhenFinished = true;
-      console.log('[NPC Anim] Wave clip:', waveClip.name);
     }
 
     if (yesClip) {
       actions.yes = mixer.clipAction(yesClip);
       actions.yes.setLoop(LoopRepeat, Infinity);
-      console.log('[NPC Anim] Yes clip:', yesClip.name);
     }
 
     // Handle interrupt animations (single or sequence)
@@ -128,7 +121,6 @@ const NPCModelGLTF: React.FC<{
           actions[key] = mixer.clipAction(clip);
           actions[key].setLoop(LoopOnce, 1);
           actions[key].clampWhenFinished = true;
-          console.log(`[NPC Anim] Interrupt[${i}] clip:`, clip.name);
           numInterrupts++;
         }
       });
@@ -149,14 +141,12 @@ const NPCModelGLTF: React.FC<{
 
       // Wave finished → go to yes
       if (actions.wave && e.action === actions.wave) {
-        console.log('[NPC Anim] Wave finished → Yes');
         crossfadeTo('yes');
         return;
       }
 
       // Yes finished (only fires when LoopOnce) → start interrupt sequence
       if (actions.yes && e.action === actions.yes && numInterrupts > 0 && isNearRef.current) {
-        console.log('[NPC Anim] Yes finished → Interrupt sequence');
         crossfadeTo('interrupt_0');
         return;
       }
@@ -166,10 +156,8 @@ const NPCModelGLTF: React.FC<{
         const idx = parseInt(current.split('_')[1]);
         const nextIdx = idx + 1;
         if (nextIdx < numInterrupts && actions[`interrupt_${nextIdx}`]) {
-          console.log(`[NPC Anim] Interrupt[${idx}] finished → Interrupt[${nextIdx}]`);
           crossfadeTo(`interrupt_${nextIdx}`);
         } else {
-          console.log(`[NPC Anim] Interrupt sequence done → Yes`);
           crossfadeTo('yes');
         }
       }
@@ -191,7 +179,6 @@ const NPCModelGLTF: React.FC<{
     isNearRef.current = isNearPlayer;
 
     if (justArrived) {
-      console.log('[NPC Anim] Player arrived! Starting wave → yes sequence');
       hasPlayedWaveRef.current = false;
 
       if (actionsRef.current.wave) {
@@ -202,7 +189,6 @@ const NPCModelGLTF: React.FC<{
     }
 
     if (justLeft) {
-      console.log('[NPC Anim] Player left! Returning to idle');
       hasPlayedWaveRef.current = false;
       crossfadeTo('idle');
     }
@@ -241,7 +227,7 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
   const groupRef = useRef<Group>(null);
   const modelGroupRef = useRef<Group>(null);
   const [isNearPlayer, setIsNearPlayer] = useState(false);
-  const { activeNPC, setActiveNPC, setDialogueOpen, isAutoWalking } = useGameStore();
+  const { activeNPC, setActiveNPC, setDialogueOpen, isAutoWalking, dialogueOpen } = useGameStore();
 
   // Constants
   const INTERACTION_DIST = 4;
@@ -291,13 +277,11 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
     if (!isAutoWalking) {
       if (dist < INTERACTION_DIST) {
         if (activeNPC !== data.id) {
-          console.log('NPC interaction triggered:', data.id, 'Distance:', dist);
           setActiveNPC(data.id);
           setDialogueOpen(true);
         }
       } else if (dist > EXIT_DIST) {
         if (activeNPC === data.id) {
-          console.log('NPC interaction ended:', data.id, 'Distance:', dist);
           setActiveNPC(null);
           setDialogueOpen(false);
         }
@@ -321,12 +305,29 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
           <NPCDefaultGeometry color={data.color} />
         )}
 
-        {/* Role Text Floating */}
-        <Html position={[0, 1.3, 0]} center distanceFactor={8}>
-          <div className="bg-white/80 px-1.5 py-0.5 rounded shadow-sm font-bold text-gray-800 whitespace-nowrap backdrop-blur-sm" style={{ opacity: 0.9, fontSize: '8px' }}>
-            {data.role}
-          </div>
-        </Html>
+        {/* Role Text Floating — RPG Nameplate — hidden when panel is open */}
+        {!dialogueOpen && (
+          <Html position={[0, 1.3, 0]} center distanceFactor={8}>
+            <div style={{
+              background: 'linear-gradient(180deg, rgba(26,21,32,0.92) 0%, rgba(19,16,28,0.95) 100%)',
+              border: '1px solid rgba(139,105,20,0.5)',
+              borderRadius: '4px',
+              padding: '2px 10px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.5), 0 0 8px rgba(139,105,20,0.15)',
+              whiteSpace: 'nowrap' as const,
+            }}>
+              <span style={{
+                fontSize: '8px',
+                fontWeight: 700,
+                color: '#e8d5a3',
+                letterSpacing: '1px',
+                textTransform: 'uppercase' as const,
+                textShadow: '0 0 6px rgba(200,160,80,0.3)',
+                fontFamily: "'Segoe UI', system-ui, sans-serif",
+              }}>{data.role}</span>
+            </div>
+          </Html>
+        )}
       </group>
     </group>
   );

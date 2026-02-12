@@ -52,7 +52,7 @@ const CloudGroup = ({ position, scale }: { position: Vector3; scale: number }) =
     uniforms: {
       uTime: { value: 0 },
       uBaseColor: { value: new Color('#ffffff') },
-      uShadowColor: { value: new Color('#b0c4de') }, // Soft blue-grey shadow
+      uShadowColor: { value: new Color('#c8b8d4') }, // Warm lavender shadow
       uLightDir: { value: new Vector3(1, 1, 0.5) }
     },
     vertexShader: cloud3DVertexShader,
@@ -96,7 +96,7 @@ const CloudGroup = ({ position, scale }: { position: Vector3; scale: number }) =
 
 export const AnimeClouds = () => {
   const mainGroup = useRef<Group>(null);
-  
+
   const cloudData = useMemo(() => {
     const data = [];
     const count = 15; // More clouds total
@@ -105,15 +105,15 @@ export const AnimeClouds = () => {
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + Math.random();
       const latitude = 0.3 + Math.random() * 0.4;
-      
+
       const x = Math.cos(angle) * dist * Math.cos(latitude);
       const z = Math.sin(angle) * dist * Math.cos(latitude);
       const y = Math.sin(latitude) * dist;
-      
+
       data.push({
         pos: new Vector3(x, y, z),
         // REDUCED GLOBAL SCALE: from (2-5) down to (0.8-1.5)
-        scale: 0.8 + Math.random() * 1.5 
+        scale: 0.8 + Math.random() * 1.5
       });
     }
     return data;

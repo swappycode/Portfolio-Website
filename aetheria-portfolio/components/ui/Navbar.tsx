@@ -19,23 +19,27 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   };
 
   return (
-    <nav className={`absolute top-0 left-0 right-0 ${isMobile ? 'p-6' : 'p-8'} flex justify-center items-start pointer-events-none z-20`}>
+    <nav className={`absolute top-0 left-0 right-0 ${isMobile ? 'p-2' : 'p-8'} flex justify-center items-start pointer-events-none z-20`}>
       <div
-        className="flex items-center gap-2 pointer-events-auto"
+        className={`flex items-center ${isMobile ? 'gap-1' : 'gap-2'} pointer-events-auto max-w-full`}
         style={{
           background: 'linear-gradient(180deg, rgba(26,21,32,0.92) 0%, rgba(19,16,28,0.95) 100%)',
           border: '1px solid rgba(139,105,20,0.4)',
           borderRadius: '12px',
-          padding: isMobile ? '6px' : '8px',
+          padding: isMobile ? '4px' : '8px',
           boxShadow: '0 4px 24px rgba(0,0,0,0.4), 0 0 20px rgba(139,105,20,0.1), inset 0 1px 0 rgba(200,160,80,0.1)',
         }}
       >
-        {/* Ornamental left edge */}
-        <div style={{
-          width: '4px', height: isMobile ? '30px' : '40px', borderRadius: '2px',
-          background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
-          marginLeft: '4px',
-        }} />
+
+        {/* Ornamental left edge - hidden on mobile */}
+        {!isMobile && (
+          <div style={{
+            width: '4px', height: '40px', borderRadius: '2px',
+            background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
+            marginLeft: '4px',
+            flexShrink: 0,
+          }} />
+        )}
 
         {NPC_CONFIG.map((npc) => {
           const isActive = activeNPC === npc.id;
@@ -48,11 +52,11 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
               }}
               disabled={isAutoWalking && isActive}
               style={{
-                padding: isMobile ? '10px 18px' : '12px 24px',
+                padding: isMobile ? '6px 10px' : '12px 24px',
                 borderRadius: '8px',
-                fontSize: isMobile ? '13px' : '14px',
+                fontSize: isMobile ? '11px' : '14px',
                 fontWeight: 700,
-                letterSpacing: '1px',
+                letterSpacing: isMobile ? '0.5px' : '1px',
                 textTransform: 'uppercase' as const,
                 cursor: isAutoWalking && isActive ? 'default' : 'pointer',
                 border: isActive
@@ -65,6 +69,7 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 transition: 'all 0.25s ease',
                 transform: isActive ? 'scale(1.05)' : 'scale(1)',
                 textShadow: isActive ? '0 0 8px rgba(200,160,80,0.3)' : 'none',
+                whiteSpace: 'nowrap',
               }}
               onMouseEnter={e => {
                 if (!isActive) {
@@ -87,11 +92,14 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         })}
 
         {/* Ornamental right edge */}
-        <div style={{
-          width: '4px', height: isMobile ? '30px' : '40px', borderRadius: '2px',
-          background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
-          marginRight: '4px',
-        }} />
+        {!isMobile && (
+          <div style={{
+            width: '4px', height: '40px', borderRadius: '2px',
+            background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
+            marginRight: '4px',
+            flexShrink: 0,
+          }} />
+        )}
       </div>
     </nav>
   );

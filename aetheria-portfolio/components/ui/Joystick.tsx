@@ -15,27 +15,28 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
 
   const calculateJoystickPosition = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
-    
+
     const rect = containerRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     let dx = clientX - centerX;
     let dy = clientY - centerY;
-    
+
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (distance > maxDistance) {
       const angle = Math.atan2(dy, dx);
       dx = Math.cos(angle) * maxDistance;
       dy = Math.sin(angle) * maxDistance;
     }
-    
+
     return { x: dx, y: dy };
   }, []);
 
   const handleStart = useCallback((clientX: number, clientY: number, touchId?: number) => {
     setActive(true);
+
     if (touchId !== undefined) touchIdRef.current = touchId;
     const pos = calculateJoystickPosition(clientX, clientY);
     setPosition(pos);
@@ -45,7 +46,7 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
   const handleMove = useCallback((clientX: number, clientY: number, touchId?: number) => {
     if (!active) return;
     if (touchId !== undefined && touchIdRef.current !== touchId) return;
-    
+
     const pos = calculateJoystickPosition(clientX, clientY);
     setPosition(pos);
     onMove(pos.x / maxDistance, -pos.y / maxDistance);
@@ -53,7 +54,7 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
 
   const handleEnd = useCallback((touchId?: number) => {
     if (touchId !== undefined && touchIdRef.current !== touchId) return;
-    
+
     setActive(false);
     setPosition({ x: 0, y: 0 });
     touchIdRef.current = null;
@@ -102,17 +103,17 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
   // Mouse events (for desktop testing)
   const onMouseDown = (e: React.MouseEvent) => {
     handleStart(e.clientX, e.clientY);
-    
+
     const onMouseMove = (ev: MouseEvent) => {
       handleMove(ev.clientX, ev.clientY);
     };
-    
+
     const onMouseUp = () => {
       handleEnd();
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-    
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   };
@@ -141,8 +142,8 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
         transition: 'opacity 0.3s ease, transform 0.2s ease',
         opacity: active ? 1 : 0.7,
         transform: active ? 'scale(1.05)' : 'scale(1)',
-        boxShadow: active 
-          ? '0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(200,160,80,0.15)' 
+        boxShadow: active
+          ? '0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(200,160,80,0.15)'
           : '0 4px 16px rgba(0,0,0,0.3)',
       }}
     >
@@ -154,7 +155,7 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
         borderRadius: '50%',
         border: '1px solid rgba(200, 160, 80, 0.15)',
       }} />
-      
+
       {/* Center dot */}
       <div style={{
         position: 'absolute',
@@ -163,13 +164,13 @@ export const Joystick: React.FC<JoystickProps> = ({ onMove, onEnd }) => {
         borderRadius: '50%',
         background: 'rgba(200, 160, 80, 0.4)',
       }} />
-      
+
       {/* Joystick knob */}
       <div style={{
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: active 
+        background: active
           ? 'radial-gradient(circle at 30% 30%, rgba(232, 213, 163, 0.9), rgba(200, 160, 80, 0.7))'
           : 'radial-gradient(circle at 30% 30%, rgba(200, 160, 80, 0.8), rgba(139, 105, 20, 0.6))',
         border: `2px solid ${active ? 'rgba(232, 213, 163, 0.8)' : 'rgba(200, 160, 80, 0.5)'}`,

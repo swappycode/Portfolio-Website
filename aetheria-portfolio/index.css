@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Cursor */
+/* Custom Cursor */
+body,
+button,
+a,
+[role="button"],
+.cursor-pointer {
+  cursor: url('/models/cursor.png'), auto !important;
+}
+
 /* Custom styles for markdown content in floating cards */
 .markdown-content {
   line-height: 1.6;

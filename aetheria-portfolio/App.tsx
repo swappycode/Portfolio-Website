@@ -10,6 +10,7 @@ import { BackgroundMusic } from './components/ui/BackgroundMusic';
 function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [joystickInput, setJoystickInput] = useState({ x: 0, y: 0 });
+  const [hasStarted, setHasStarted] = useState(false);
   const { active, progress } = useProgress();
   const isLoading = active || progress < 100;
 
@@ -68,7 +69,7 @@ function App() {
       <FloatingCard isMobile={isMobile} />
 
       {/* Mobile Joystick - hidden during loading */}
-      {isMobile && !isLoading && (
+      {isMobile && hasStarted && (
         <Joystick onMove={handleJoystickMove} onEnd={handleJoystickEnd} />
       )}
 
@@ -100,7 +101,7 @@ function App() {
         </div>
       )}
 
-      <LoadingScreen />
+      <LoadingScreen onStarted={() => setHasStarted(true)} />
     </div>
   );
 }

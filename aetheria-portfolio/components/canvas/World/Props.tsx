@@ -156,6 +156,10 @@ const GLTFTrees: React.FC<{ data: any[] }> = ({ data }) => {
     scene.traverse((child) => {
       if ((child as Mesh).isMesh && !mesh) {
         mesh = child as Mesh;
+        if (mesh.material) {
+          (mesh.material as any).flatShading = true;
+          (mesh.material as any).needsUpdate = true;
+        }
       }
     });
     return mesh;

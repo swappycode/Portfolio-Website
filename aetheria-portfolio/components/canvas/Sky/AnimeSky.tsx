@@ -86,21 +86,21 @@ const fragmentShader = `
         float sunDisc = smoothstep(0.9975, 0.999, sunAngle);
         
         // Inner halo — intense warm glow
-        float innerHalo = pow(max(0.0, sunAngle), 48.0) * 0.9;
+        float innerHalo = pow(max(0.0, sunAngle), 60.0) * 0.8;
         
-        // Wide atmospheric halo
-        float outerHalo = pow(max(0.0, sunAngle), 6.0) * 0.35;
+        // Wide atmospheric halo - TIGHTENED (higher power, lower intensity)
+        float outerHalo = pow(max(0.0, sunAngle), 12.0) * 0.25;
         
-        // Horizon-hugging warm band near the sun
-        float horizonGlow = pow(max(0.0, sunAngle), 2.5) * (1.0 - abs(viewDir.y)) * 0.5;
+        // Horizon-hugging warm band near the sun - REDUCED spread
+        float horizonGlow = pow(max(0.0, sunAngle), 5.0) * (1.0 - abs(viewDir.y)) * 0.4;
         
-        // Sun colors
-        vec3 sunDiskColor = vec3(1.0, 0.98, 0.9);
-        vec3 sunGlowColor = vec3(1.0, 0.82, 0.4);
+        // Sun/Astral Glow colors - Vibrant Blue
+        vec3 sunDiskColor = vec3(0.4, 0.6, 1.0); // Bright Blue White
+        vec3 sunGlowColor = vec3(0.0, 0.4, 1.0); // Deep Vibrant Blue
         
         // Apply sun effects
         skyColor = mix(skyColor, sunGlowColor, outerHalo + horizonGlow);
-        skyColor = mix(skyColor, sunGlowColor * 1.4, innerHalo);
+        skyColor = mix(skyColor, sunGlowColor * 1.5, innerHalo);
         skyColor += sunDiskColor * sunDisc * 1.5;
         
         // === Subtle atmospheric scattering for fantasy feel ===
@@ -127,11 +127,12 @@ export const AnimeSky: React.FC<AnimeSkyProps> = ({
       uniforms: {
         uSunDirection: { value: sunPosition.clone().normalize() },
         // Fantasy RPG palette — vivid, magical, blue-dominant
-        uColorDeep: { value: new Color('#0d1b4a') },  // Deep midnight indigo
-        uColorMid: { value: new Color('#1976d2') },  // Vivid bright blue
-        uColorLow: { value: new Color('#4dd0e1') },  // Bright aqua/cyan
-        uColorHorizon: { value: new Color('#ffe082') },  // Soft golden glow
-        uColorBelow: { value: new Color('#f48fb1') },  // Soft rose-pink
+        // Fantasy RPG palette — Vibrant Astral Sunset
+        uColorDeep: { value: new Color('#0b1026') },  // Deep Space Navy (Zenith)
+        uColorMid: { value: new Color('#4b0082') },   // Indigo/Deep Purple
+        uColorLow: { value: new Color('#d900ff') },   // Vibrant Magenta
+        uColorHorizon: { value: new Color('#ff9900') }, // Bright Sunset Orange
+        uColorBelow: { value: new Color('#ff5500') },   // Deep Red/Orange (Below horizon)
       },
       side: 1, // BackSide
       transparent: false,

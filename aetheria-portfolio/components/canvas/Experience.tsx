@@ -4,6 +4,9 @@ import { PerspectiveCamera, Preload } from '@react-three/drei';
 import { World } from './World/World';
 import { Player } from './Player/Player';
 import { AnimeSky } from './Sky/AnimeSky';
+import { Starfield } from './Environment/Starfield';
+import { Planet } from './Environment/Planet';
+import { Aurora } from './Environment/Aurora';
 import { WORLD_RADIUS, CAMERA_DISTANCE, CAMERA_HEIGHT } from '../../config/world.config';
 import { useGameStore } from '../../store/gameStore';
 import { Vector3, Quaternion, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
@@ -167,28 +170,42 @@ export const Experience: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         isMobile={isMobile}
       />
 
-      {/* Lighting — warm anime golden-hour */}
-      <ambientLight intensity={1.4} color="#ffeedd" />
-      <hemisphereLight args={['#87CEEB', '#b4e88c', 0.5]} />
+      {/* Lighting — Dramatic Fantasy / Astral Sunset (MATCHED AESTHETIC) */}
+      {/* Increased ambient brightness and warmth to fix "too dark" shadows */}
+      <ambientLight intensity={2.0} color="#d9a6c2" />
+      {/* Hemisphere: Sky (Deep Indigo) vs Ground (Rose Gold Reflection) */}
+      <hemisphereLight args={['#2e004f', '#ffb380', 1.5]} />
+
+      {/* Main Sun Light - Rose Gold / Peach Tint */}
       <directionalLight
         castShadow
-        position={[10, 20, 10]}
-        intensity={1.8}
-        color="#fff5e6"
-        shadow-mapSize={[1024, 1024]}
-        shadow-bias={-0.0001}
+        position={[30, 50, 30]} // Front-right lighting for visibility
+        intensity={3.0}
+        color="#ffd6ba"
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0005}
       >
-        <orthographicCamera attach="shadow-camera" args={[-20, 20, 20, -20]} />
+        <orthographicCamera attach="shadow-camera" args={[-50, 50, 50, -50]} />
       </directionalLight>
 
-      {/* Anime Sky */}
+      {/* Environment */}
+      {/* Stars: Increased count, size, and brightness to ensure visibility */}
+      <Starfield count={5000} radius={350} size={2.5} color="#ffffff" />
+
+      {/* Planet: Adjusted for composition */}
+      <Planet position={[0, 0, -120]} size={15} color="#4b0082" ringColor="#00ffff" />
+
+      {/* Anime Sky Gradient */}
       <AnimeSky
-        radius={150}
-        sunPosition={new Vector3(30, 25, -20)}
+        radius={450}
+        sunPosition={new Vector3(0, -5, -120)}
       />
 
-      {/* Fog for depth — soft blue matching sky horizon */}
-      <fog attach="fog" args={['#c8dff5', 8, 30]} />
+      {/* Aurora Borealis Effect */}
+      <Aurora position={[0, 45, -150]} scale={[2.0, 1.5, 1]} />
+
+      {/* Fog - Lighter to match new ambient levels */}
+      <fog attach="fog" args={['#6a4c93', 20, 100]} />
 
       <World input={input} onRotationVelocityChange={setRotationVelocity} isMobile={isMobile} />
       <Player isMoving={isMoving} rotationVelocity={rotationVelocity} />

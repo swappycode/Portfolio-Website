@@ -59,7 +59,7 @@ const fragmentShader = `
         // Edge detection for outlines
         float edge = 0.0;
         
-        // Silhouette edge detection (based on normal facing away from camera)
+        // Silhouette edge detection
         float normalDotView = dot(vNormal, viewDir);
         edge += step(0.0, -normalDotView) * uOutlineThickness;
         
@@ -103,7 +103,7 @@ export const CelShaderMaterial: React.FC<CelShaderMaterialProps> = ({
       side: 2, // DoubleSide
       transparent: false
     });
-    
+
     return mat;
   }, [color, outlineColor, outlineThickness, shadowLevels, rimLighting, lightDirection]);
 

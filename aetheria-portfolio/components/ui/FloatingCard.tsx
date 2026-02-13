@@ -104,10 +104,27 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     };
   }, [dialogueOpen]);
 
-  // Animate in
+  // Animate in and Play Sound
   useEffect(() => {
     if (dialogueOpen && npc) {
       requestAnimationFrame(() => setAnimateIn(true));
+
+      // Play NPC Sound
+      try {
+        let soundFile = '';
+        if (npc.role === NPCRole.ABOUT) soundFile = '/models/demon.mp3';
+        else if (npc.role === NPCRole.PROJECTS) soundFile = '/models/fish.mp3';
+        else if (npc.role === NPCRole.SERVICES) soundFile = '/models/Ninja.mp3';
+        else if (npc.role === NPCRole.CONTACT) soundFile = '/models/contact.mp3';
+
+        if (soundFile) {
+          const audio = new Audio(soundFile);
+          audio.volume = 0.5; // Moderate volume
+          audio.play().catch(e => console.warn('NPC sound blocked/failed', e));
+        }
+      } catch (err) {
+        console.error('Error playing NPC sound:', err);
+      }
     } else {
       setAnimateIn(false);
     }
@@ -147,14 +164,34 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [dialogueOpen, showReadme, selectedProject]);
 
-  const closePanel = () => useGameStore.getState().setDialogueOpen(false);
+  // Audio ref for clicks
+  const clickAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    clickAudioRef.current = new Audio('/models/click.mp3');
+    clickAudioRef.current.volume = 0.5;
+  }, []);
+
+  const playClick = () => {
+    if (clickAudioRef.current) {
+      clickAudioRef.current.currentTime = 0;
+      clickAudioRef.current.play().catch(e => console.error("Click audio error", e));
+    }
+  };
+
+  const closePanel = () => {
+    playClick();
+    useGameStore.getState().setDialogueOpen(false);
+  };
 
   const openProjectDetails = (project: ProjectItem) => {
+    playClick();
     setSelectedProject(project);
     setShowReadme(false);
   };
 
   const fetchReadme = async (project: ProjectItem) => {
+    playClick();
     setShowReadme(true);
     setIsFetchingReadme(true);
     try {
@@ -340,14 +377,15 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           {isProjects ? (
             <ProjectsView
               projects={projects} loading={loading}
-              projectCategory={projectCategory} setProjectCategory={setProjectCategory}
+              projectCategory={projectCategory} setProjectCategory={(cat) => { playClick(); setProjectCategory(cat); }}
               selectedProject={selectedProject} onSelectProject={openProjectDetails}
               readmeContent={readmeContent} showReadme={showReadme}
               isFetchingReadme={isFetchingReadme} onFetchReadme={fetchReadme}
-              onCloseReadme={() => setShowReadme(false)}
-              onBack={() => setSelectedProject(null)}
+              onCloseReadme={() => { playClick(); setShowReadme(false); }}
+              onBack={() => { playClick(); setSelectedProject(null); }}
               npcColor={npc.color}
               isMobile={isMobile}
+              playClick={playClick}
             />
           ) : (
             <GenericContent npc={npc} isMobile={isMobile} />
@@ -515,13 +553,14 @@ interface ProjectsViewProps {
   onBack: () => void;
   npcColor: string;
   isMobile: boolean;
+  playClick: () => void;
 }
 
 const ProjectsView: React.FC<ProjectsViewProps> = ({
   projects, loading, projectCategory, setProjectCategory,
   selectedProject, onSelectProject, readmeContent, showReadme,
   isFetchingReadme, onFetchReadme, onCloseReadme, onBack,
-  isMobile
+  isMobile, playClick
 }) => {
   const TabBtn = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
     <button onClick={onClick} style={{

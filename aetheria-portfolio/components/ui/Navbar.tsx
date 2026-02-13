@@ -4,22 +4,35 @@ import { NPC_CONFIG } from '../../config/world.config';
 
 export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const { startAutoWalk, activeNPC, isAutoWalking } = useGameStore();
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  React.useEffect(() => {
+    audioRef.current = new Audio('/models/click.mp3');
+    audioRef.current.volume = 0.5;
+  }, []);
+
+  const playClickSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.error("Audio play failed", e));
+    }
+  };
 
   return (
-    <nav className={`absolute top-0 left-0 right-0 ${isMobile ? 'p-2' : 'p-4'} flex justify-center items-start pointer-events-none z-20`}>
+    <nav className={`absolute top-0 left-0 right-0 ${isMobile ? 'p-6' : 'p-8'} flex justify-center items-start pointer-events-none z-20`}>
       <div
-        className="flex items-center gap-1 pointer-events-auto"
+        className="flex items-center gap-2 pointer-events-auto"
         style={{
           background: 'linear-gradient(180deg, rgba(26,21,32,0.92) 0%, rgba(19,16,28,0.95) 100%)',
           border: '1px solid rgba(139,105,20,0.4)',
-          borderRadius: '8px',
-          padding: isMobile ? '3px' : '4px',
+          borderRadius: '12px',
+          padding: isMobile ? '6px' : '8px',
           boxShadow: '0 4px 24px rgba(0,0,0,0.4), 0 0 20px rgba(139,105,20,0.1), inset 0 1px 0 rgba(200,160,80,0.1)',
         }}
       >
         {/* Ornamental left edge */}
         <div style={{
-          width: '3px', height: isMobile ? '20px' : '28px', borderRadius: '2px',
+          width: '4px', height: isMobile ? '30px' : '40px', borderRadius: '2px',
           background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
           marginLeft: '4px',
         }} />
@@ -29,14 +42,17 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           return (
             <button
               key={npc.id}
-              onClick={() => startAutoWalk(npc.id)}
+              onClick={() => {
+                playClickSound();
+                startAutoWalk(npc.id);
+              }}
               disabled={isAutoWalking && isActive}
               style={{
-                padding: isMobile ? '4px 10px' : '6px 16px',
-                borderRadius: '5px',
-                fontSize: isMobile ? '9px' : '11px',
+                padding: isMobile ? '10px 18px' : '12px 24px',
+                borderRadius: '8px',
+                fontSize: isMobile ? '13px' : '14px',
                 fontWeight: 700,
-                letterSpacing: '0.8px',
+                letterSpacing: '1px',
                 textTransform: 'uppercase' as const,
                 cursor: isAutoWalking && isActive ? 'default' : 'pointer',
                 border: isActive
@@ -47,7 +63,7 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                   : 'transparent',
                 color: isActive ? '#e8d5a3' : '#6b5e50',
                 transition: 'all 0.25s ease',
-                transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                transform: isActive ? 'scale(1.05)' : 'scale(1)',
                 textShadow: isActive ? '0 0 8px rgba(200,160,80,0.3)' : 'none',
               }}
               onMouseEnter={e => {
@@ -72,7 +88,7 @@ export const Navbar: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
         {/* Ornamental right edge */}
         <div style={{
-          width: '3px', height: isMobile ? '20px' : '28px', borderRadius: '2px',
+          width: '4px', height: isMobile ? '30px' : '40px', borderRadius: '2px',
           background: 'linear-gradient(180deg, transparent 0%, rgba(200,160,80,0.4) 50%, transparent 100%)',
           marginRight: '4px',
         }} />

@@ -19,6 +19,10 @@ export interface NPCData {
   dialogue: {
     intro: string;
     details?: string;
+    image?: string; // Profile picture
+    listItems?: { title: string; desc: string }[]; // For Services list
+    links?: { label: string; url: string; icon?: string }[]; // For Contact links
+    resumes?: { label: string; url: string }[]; // For Resume downloads
   };
 }
 

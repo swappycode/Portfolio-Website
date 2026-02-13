@@ -12,7 +12,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isAutoWalking: false,
   targetRotationQuaternion: null,
   dialogueOpen: false,
-  projectCategory: 'GAME_DEV',
+  projectCategory: 'SDE',
 
   setActiveNPC: (id) => set({ activeNPC: id }),
 

@@ -36,7 +36,7 @@ const RPG = {
 const TILT_MAX = 8;        // max degrees of tilt
 const GLARE_OPACITY = 0.12; // glare intensity
 
-export const FloatingCard: React.FC = () => {
+export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const { activeNPC, dialogueOpen, projectCategory, setProjectCategory } = useGameStore();
 
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -163,7 +163,11 @@ export const FloatingCard: React.FC = () => {
         const gameDetail = await ApiService.getItchGameDetail(slug);
         setReadmeContent(gameDetail.readme || 'No README available.');
       } else {
-        setReadmeContent('GitHub README fetching coming soon.');
+        // Use project title or ID as the repo name. 
+        // Assuming project.id corresponds to repo name for now based on api.ts transformation.
+        const repoName = project.id;
+        const repoDetail = await ApiService.getGitHubProjectDetail(repoName);
+        setReadmeContent(repoDetail.readme || 'No README available.');
       }
     } catch {
       setReadmeContent('Error loading README.');
@@ -343,9 +347,10 @@ export const FloatingCard: React.FC = () => {
               onCloseReadme={() => setShowReadme(false)}
               onBack={() => setSelectedProject(null)}
               npcColor={npc.color}
+              isMobile={isMobile}
             />
           ) : (
-            <GenericContent npc={npc} />
+            <GenericContent npc={npc} isMobile={isMobile} />
           )}
         </div>
 
@@ -376,20 +381,121 @@ export const FloatingCard: React.FC = () => {
 /* ─────────────────────────────────────────────
    Generic NPC Content (About / Services / Contact)
    ───────────────────────────────────────────── */
-const GenericContent: React.FC<{ npc: any }> = ({ npc }) => (
-  <div style={{
-    padding: '18px 22px', overflow: 'auto',
-    scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent',
-  }}>
-    <p style={{ color: RPG.textBody, fontSize: '14px', lineHeight: 1.75, margin: '0 0 14px' }}>{npc.dialogue.intro}</p>
-    {npc.dialogue.details && (
+/* ─────────────────────────────────────────────
+   Generic NPC Content (About / Services / Contact)
+   ───────────────────────────────────────────── */
+const GenericContent: React.FC<{ npc: any, isMobile: boolean }> = ({ npc, isMobile }) => {
+  const { image, listItems, links, resumes } = npc.dialogue;
+
+  return (
+    <div style={{
+      flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', width: '100%',
+      overflow: 'hidden'
+    }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <div style={{
-        background: 'rgba(200,160,80,0.05)', border: `1px solid ${RPG.borderFaint}`,
-        borderRadius: '10px', padding: '14px 16px', color: RPG.textMuted, fontSize: '13px', lineHeight: 1.65,
-      }}>{npc.dialogue.details}</div>
-    )}
-  </div>
-);
+        flex: 1, overflow: 'auto',
+        padding: isMobile ? '14px 16px' : '20px 24px',
+        scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y' as const
+      }}>
+        {/* ── PROFILE HEADER (IMAGE + BIO) ── */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '20px', marginBottom: '20px' }}>
+          {image && (
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                width: isMobile ? '80px' : '100px', height: isMobile ? '80px' : '100px',
+                borderRadius: '12px', border: `2px solid ${RPG.gold}`,
+                overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                background: '#000',
+              }}>
+                <img src={image} alt={npc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            </div>
+          )}
+          <div>
+            <p style={{ color: RPG.textBody, fontSize: isMobile ? '13px' : '15px', lineHeight: 1.6, margin: '0 0 12px', fontWeight: 500 }}>
+              {npc.dialogue.intro}
+            </p>
+            {npc.dialogue.details && (
+              <div style={{
+                color: RPG.textMuted, fontSize: '13px', lineHeight: 1.6,
+                background: 'rgba(200,160,80,0.04)', padding: '10px 14px', borderRadius: '8px',
+                borderLeft: `3px solid ${RPG.goldDim}`
+              }}>{npc.dialogue.details}</div>
+            )}
+          </div>
+        </div>
+
+        {/* ── SERVICE LIST ITEMS ── */}
+        {listItems && (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+            {listItems.map((item: any, i: number) => (
+              <div key={i} style={{
+                background: 'linear-gradient(180deg, rgba(200,160,80,0.08) 0%, rgba(200,160,80,0.02) 100%)',
+                border: `1px solid ${RPG.borderFaint}`, borderRadius: '8px', padding: '12px',
+              }}>
+                <h4 style={{ margin: '0 0 4px', color: RPG.goldBright, fontSize: '13px', fontWeight: 700 }}>{item.title}</h4>
+                <p style={{ margin: 0, color: RPG.textDim, fontSize: '11px', lineHeight: 1.5 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── CONTACT LINKS ── */}
+        {links && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
+            {links.map((link: any, i: number) => (
+              <a key={i} href={link.url} target="_blank" rel="noreferrer" style={{
+                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', borderRadius: '6px',
+                background: 'rgba(200,160,80,0.1)', border: `1px solid ${RPG.borderSoft}`,
+                color: RPG.gold, fontSize: '12px', fontWeight: 600, transition: 'all 0.2s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,160,80,0.2)'; e.currentTarget.style.color = RPG.goldBright; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(200,160,80,0.1)'; e.currentTarget.style.color = RPG.gold; }}
+              >
+                <span>{link.icon}</span> {link.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* ── RESUME DOWNLOADS ── */}
+        {resumes && (
+          <div style={{ marginTop: '24px', borderTop: `1px solid ${RPG.borderFaint}`, paddingTop: '16px' }}>
+            <h4 style={{ margin: '0 0 12px', color: RPG.textMuted, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Resume</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {resumes.map((resume: any, i: number) => (
+                <div key={i} style={{ display: 'flex', gap: '1px' }}>
+                  <a href={resume.url} target="_blank" rel="noreferrer" style={{
+                    textDecoration: 'none', padding: '8px 14px',
+                    background: `linear-gradient(180deg, ${RPG.gold} 0%, ${RPG.goldDim} 100%)`,
+                    borderRadius: '6px 0 0 6px', color: '#1a1520', fontSize: '12px', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    👁️ View {resume.label}
+                  </a>
+                  <a href={resume.url} download style={{
+                    textDecoration: 'none', padding: '8px 10px',
+                    background: `linear-gradient(180deg, ${RPG.goldDim} 0%, #6b5e50 100%)`,
+                    borderRadius: '0 6px 6px 0', color: '#1a1520', fontSize: '12px', fontWeight: 700,
+                    borderLeft: '1px solid rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center'
+                  }}>
+                    ⬇
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 /* ─────────────────────────────────────────────
    Projects Panel — Grid + Detail Sidebar
@@ -408,61 +514,82 @@ interface ProjectsViewProps {
   onCloseReadme: () => void;
   onBack: () => void;
   npcColor: string;
+  isMobile: boolean;
 }
 
 const ProjectsView: React.FC<ProjectsViewProps> = ({
   projects, loading, projectCategory, setProjectCategory,
   selectedProject, onSelectProject, readmeContent, showReadme,
   isFetchingReadme, onFetchReadme, onCloseReadme, onBack,
+  isMobile
 }) => {
   const TabBtn = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
     <button onClick={onClick} style={{
-      padding: '5px 14px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px',
+      padding: isMobile ? '4px 10px' : '5px 14px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.8px',
       textTransform: 'uppercase' as const, borderRadius: '5px',
       border: active ? '1px solid rgba(200,160,80,0.45)' : '1px solid rgba(200,160,80,0.1)',
       background: active ? 'linear-gradient(180deg, rgba(200,160,80,0.18) 0%, rgba(200,160,80,0.06) 100%)' : 'transparent',
       color: active ? RPG.goldBright : RPG.textDim, cursor: 'pointer', transition: 'all 0.2s',
+      flex: isMobile ? 1 : 'initial',
     }}>{label}</button>
   );
+
+  // Mobile Logic: If a project is selected, hide the list entirely
+  const showList = !isMobile || !selectedProject;
+  const showDetails = selectedProject;
 
   return (
     <div style={{ display: 'flex', width: '100%', minHeight: 0, overflow: 'hidden' }}>
       {/* LEFT: Project Grid */}
-      <div style={{
-        flex: selectedProject ? '0 0 52%' : '1',
-        display: 'flex', flexDirection: 'column' as const,
-        borderRight: selectedProject ? `1px solid ${RPG.borderFaint}` : 'none',
-        minHeight: 0, transition: 'flex 0.3s ease',
-      }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '6px', padding: '10px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
-          <TabBtn label="Game Dev" active={projectCategory === 'GAME_DEV'} onClick={() => setProjectCategory('GAME_DEV')} />
-          <TabBtn label="Software Eng" active={projectCategory === 'SDE'} onClick={() => setProjectCategory('SDE')} />
-        </div>
+      {showList && (
+        <div style={{
+          flex: selectedProject && !isMobile ? '0 0 52%' : '1',
+          display: 'flex', flexDirection: 'column' as const,
+          borderRight: selectedProject && !isMobile ? `1px solid ${RPG.borderFaint}` : 'none',
+          minHeight: 0, transition: 'flex 0.3s ease',
+          width: '100%',
+        }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '6px', padding: '10px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
+            <TabBtn label="Game Dev" active={projectCategory === 'GAME_DEV'} onClick={() => setProjectCategory('GAME_DEV')} />
+            <TabBtn label="Software Eng" active={projectCategory === 'SDE'} onClick={() => setProjectCategory('SDE')} />
+          </div>
 
-        {/* Grid */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '10px', scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent' }}>
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-              <div style={{ width: '26px', height: '26px', border: '3px solid rgba(200,160,80,0.2)', borderTopColor: RPG.gold, borderRadius: '50%', animation: 'rpg-spin 0.8s linear infinite' }} />
-            </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: selectedProject ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-              gap: '8px',
-            }}>
-              {projects.map(project => (
-                <ProjectCard key={project.id} project={project} isSelected={selectedProject?.id === project.id} onClick={() => onSelectProject(project)} />
-              ))}
-            </div>
-          )}
+          {/* Grid */}
+          <div style={{ flex: 1, overflow: 'auto', padding: '10px', scrollbarWidth: 'thin' as const, scrollbarColor: '#3a2e45 transparent' }}>
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                <div style={{ width: '26px', height: '26px', border: '3px solid rgba(200,160,80,0.2)', borderTopColor: RPG.gold, borderRadius: '50%', animation: 'rpg-spin 0.8s linear infinite' }} />
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile
+                  ? '1fr'
+                  : selectedProject ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                gap: '8px',
+              }}>
+                {projects.map(project => (
+                  <ProjectCard key={project.id} project={project} isSelected={selectedProject?.id === project.id} onClick={() => onSelectProject(project)} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* RIGHT: Detail Sidebar */}
-      {selectedProject && (
-        <div style={{ flex: '0 0 48%', display: 'flex', flexDirection: 'column' as const, minHeight: 0, overflow: 'hidden' }}>
+      {showDetails && (
+        <div style={{ flex: isMobile ? '1' : '0 0 48%', display: 'flex', flexDirection: 'column' as const, minHeight: 0, overflow: 'hidden' }}>
+          {isMobile && !showReadme && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
+              <span style={{ color: RPG.goldBright, fontSize: '11px', fontWeight: 700 }}>DETAILS</span>
+              <button onClick={onBack} style={{
+                fontSize: '10px', color: RPG.gold, background: 'rgba(200,160,80,0.08)',
+                border: `1px solid ${RPG.borderSoft}`, borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600,
+              }}>← Back</button>
+            </div>
+          )}
           {showReadme ? (
             <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100%', minHeight: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0 }}>
@@ -593,25 +720,46 @@ const ProjectCard: React.FC<{
         background: 'linear-gradient(135deg, #1a1225 0%, #0f0c18 100%)',
         borderBottom: `1px solid ${RPG.borderFaint}`,
         position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}>
-        <img
-          src={project.imageUrl || ''}
-          alt={project.title}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-            display: 'block',
-            opacity: hovered ? 1 : 0.85,
-            transition: 'opacity 0.3s ease, transform 0.3s ease',
-            transform: hovered ? 'scale(1.05)' : 'scale(1)',
-          }}
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            img.style.display = 'none';
-          }}
-        />
+        {project.imageUrl ? (
+          <img
+            src={project.imageUrl}
+            alt={project.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain', // Changed from cover to contain
+              objectPosition: 'center',
+              display: 'block',
+              opacity: hovered ? 1 : 0.85,
+              transition: 'opacity 0.3s ease, transform 0.3s ease',
+              transform: hovered ? 'scale(1.05)' : 'scale(1)',
+              backgroundColor: '#0f0c18' // Background for contained images
+            }}
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = 'none';
+              // Show a fallback sibling if we had one, but simple hiding reveals the background
+              // For a better fallback, we'd need state, but this CSS approach works for now to hide broken icon
+              e.currentTarget.parentElement?.classList.add('image-error');
+            }}
+          />
+        ) : (
+          <div style={{
+            fontSize: '24px', fontWeight: 700, color: RPG.goldDim,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '100%', height: '100%',
+            background: `linear-gradient(135deg, ${RPG.bgDark}, ${RPG.borderFaint})`
+          }}>
+            {project.title.charAt(0)}
+          </div>
+        )}
+
+        {/* Placeholder for broken images (using CSS adjacent selector logic if we could, but here we just rely on the background) */}
+
         {/* Image overlay gradient  */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',

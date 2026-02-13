@@ -75,7 +75,7 @@ function InputHandler({ setInput }: { setInput: (i: InputState) => void }) {
     window.addEventListener('keydown', handleDown);
     window.addEventListener('keyup', handleUp);
     window.addEventListener('joystickinput' as any, handleJoystickInput);
-    
+
     return () => {
       window.removeEventListener('keydown', handleDown);
       window.removeEventListener('keyup', handleUp);
@@ -88,26 +88,38 @@ function InputHandler({ setInput }: { setInput: (i: InputState) => void }) {
 const CameraRig: React.FC<{
   isAutoWalking: boolean;
   cameraRef: React.RefObject<ThreePerspectiveCamera>;
-}> = ({ isAutoWalking, cameraRef }) => {
+  isMobile: boolean;
+}> = ({ isAutoWalking, cameraRef, isMobile }) => {
   const { camera } = useThree();
   const cameraLookAtRef = useRef(new Vector3(0, WORLD_RADIUS + 0.8, 0));
   const CAMERA_SMOOTHING = 3.5;
 
   const manualCameraPos = useMemo(
-    () => new Vector3(0, CAMERA_HEIGHT, CAMERA_DISTANCE),
-    []
+    () => new Vector3(
+      0,
+      isMobile ? CAMERA_HEIGHT + 0.8 : CAMERA_HEIGHT,
+      isMobile ? CAMERA_DISTANCE + 1.5 : CAMERA_DISTANCE
+    ),
+    [isMobile]
   );
+
   const autoCameraPos = useMemo(
-    () => new Vector3(0, CAMERA_HEIGHT + 0.8, CAMERA_DISTANCE + 1.5),
-    []
+    () => new Vector3(
+      0,
+      isMobile ? CAMERA_HEIGHT + 2.5 : CAMERA_HEIGHT + 0.8,
+      isMobile ? CAMERA_DISTANCE + 4.0 : CAMERA_DISTANCE + 1.5
+    ),
+    [isMobile]
   );
+
   const manualLookAt = useMemo(
-    () => new Vector3(0, WORLD_RADIUS + 0.8, 0),
-    []
+    () => new Vector3(0, WORLD_RADIUS + (isMobile ? 1.0 : 0.8), 0),
+    [isMobile]
   );
+
   const autoLookAt = useMemo(
-    () => new Vector3(0, WORLD_RADIUS + 1.2, 0),
-    []
+    () => new Vector3(0, WORLD_RADIUS + (isMobile ? 0.0 : 1.2), 0),
+    [isMobile]
   );
 
   useFrame((state, delta) => {
@@ -124,7 +136,7 @@ const CameraRig: React.FC<{
   return null;
 };
 
-export const Experience: React.FC = () => {
+export const Experience: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const [input, setInput] = useState({ forward: false, backward: false, left: false, right: false });
   const [rotationVelocity, setRotationVelocity] = useState({ x: 0, y: 0, z: 0 });
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
@@ -147,11 +159,12 @@ export const Experience: React.FC = () => {
         ref={cameraRef}
         makeDefault
         position={[0, CAMERA_HEIGHT, CAMERA_DISTANCE]}
-        fov={50}
+        fov={isMobile ? 65 : 50}
       />
       <CameraRig
         isAutoWalking={isAutoWalking}
         cameraRef={cameraRef}
+        isMobile={isMobile}
       />
 
       {/* Lighting — warm anime golden-hour */}
@@ -177,7 +190,7 @@ export const Experience: React.FC = () => {
       {/* Fog for depth — soft blue matching sky horizon */}
       <fog attach="fog" args={['#c8dff5', 8, 30]} />
 
-      <World input={input} onRotationVelocityChange={setRotationVelocity} />
+      <World input={input} onRotationVelocityChange={setRotationVelocity} isMobile={isMobile} />
       <Player isMoving={isMoving} rotationVelocity={rotationVelocity} />
 
       <Preload all />

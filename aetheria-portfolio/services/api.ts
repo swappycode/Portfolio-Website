@@ -6,17 +6,17 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
+
   // Fallback: Check if we're in development mode using hostname
   if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
     return 'http://localhost:3001';
   }
-  
+
   // In production without env var, use empty string for same-origin
   return '';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getApiBaseUrl().replace(/\/$/, '');
 
 // Enhanced error handling
 class ApiError extends Error {
@@ -31,7 +31,7 @@ const transformItchGameData = (games: any[]): ProjectItem[] => {
   return games.map(game => {
     const platforms = game.platforms ? Object.keys(game.platforms).filter(p => game.platforms[p]) : [];
     const platformTags = platforms.length > 0 ? platforms.map(p => p.toUpperCase()) : ['CROSS_PLATFORM'];
-    
+
     return {
       id: game.id ? game.id.toString() : Math.random().toString(36).substr(2, 9),
       slug: game.slug, // Include slug for itch.io games
@@ -48,7 +48,7 @@ const transformItchGameData = (games: any[]): ProjectItem[] => {
 const transformItchGameDetail = (game: any): ProjectItem & { readme?: string } => {
   const platforms = game.platforms ? Object.keys(game.platforms).filter(p => game.platforms[p]) : [];
   const platformTags = platforms.length > 0 ? platforms.map(p => p.toUpperCase()) : ['CROSS_PLATFORM'];
-  
+
   return {
     id: game.id ? game.id.toString() : Math.random().toString(36).substr(2, 9),
     slug: game.slug,
@@ -66,7 +66,7 @@ const transformGitHubData = (repositories: any[]): ProjectItem[] => {
   return repositories.map(repo => {
     const topics = repo.tags || repo.topics || repo.tags || ['Software Development'];
     const languageTag = repo.language ? [repo.language] : [];
-    
+
     return {
       id: repo.name || Math.random().toString(36).substr(2, 9),
       title: repo.name || 'Untitled Project',
@@ -91,7 +91,7 @@ export const ApiService = {
           throw new ApiError(`Failed to fetch itch.io projects: ${response.statusText}`, response.status);
         }
         data = await response.json();
-        
+
         if (!data.success || !data.data) {
           throw new ApiError('Invalid response format from itch.io API', 500);
         }
@@ -104,7 +104,7 @@ export const ApiService = {
           throw new ApiError(`Failed to fetch GitHub projects: ${response.statusText}`, response.status);
         }
         data = await response.json();
-        
+
         if (!data.success || !data.data) {
           throw new ApiError('Invalid response format from GitHub API', 500);
         }
@@ -113,7 +113,7 @@ export const ApiService = {
       }
     } catch (error) {
       console.error('API Error:', error);
-      
+
       // Return fallback mock data if API is unavailable
       if (category === 'GAME_DEV') {
         return [
@@ -146,7 +146,7 @@ export const ApiService = {
         throw new ApiError(`Failed to fetch profile: ${response.statusText}`, response.status);
       }
       const data = await response.json();
-      
+
       if (!data.success || !data.data) {
         throw new ApiError('Invalid response format from profile API', 500);
       }
@@ -154,7 +154,7 @@ export const ApiService = {
       return data.data;
     } catch (error) {
       console.error('Profile API Error:', error);
-      
+
       // Return fallback profile data
       return {
         name: "Developer",
@@ -183,7 +183,7 @@ export const ApiService = {
         throw new ApiError(`Failed to fetch itch.io game details: ${response.statusText}`, response.status);
       }
       const data = await response.json();
-      
+
       if (!data.success || !data.data) {
         throw new ApiError('Invalid response format from itch.io detail API', 500);
       }
@@ -191,13 +191,54 @@ export const ApiService = {
       return transformItchGameDetail(data.data);
     } catch (error) {
       console.error('Itch.io Game Detail API Error:', error);
-      
+
       // Return fallback data
       return {
         id: slug,
         slug,
         title: 'Game (Offline)',
         description: 'Unable to connect to itch.io API. Please check your backend server.',
+        tags: ['Offline Mode', 'Fallback'],
+        link: '#',
+        readme: 'README content not available in offline mode.'
+      };
+    }
+  },
+
+  // Fetch GitHub project details including README
+  getGitHubProjectDetail: async (name: string): Promise<ProjectItem & { readme?: string }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/gitprojects/${name}`);
+      if (!response.ok) {
+        throw new ApiError(`Failed to fetch GitHub project details: ${response.statusText}`, response.status);
+      }
+      const data = await response.json();
+
+      if (!data.success || !data.data) {
+        throw new ApiError('Invalid response format from GitHub detail API', 500);
+      }
+
+      const repo = data.data;
+      const topics = repo.tags || repo.topics || [];
+      const languageTag = repo.language ? [repo.language] : [];
+
+      return {
+        id: repo.name,
+        title: repo.name,
+        description: repo.description || 'A project developed by the creator.',
+        tags: ['Software Development', ...languageTag, ...topics],
+        link: repo.githubUrl || repo.html_url || '#',
+        imageUrl: repo.imageUrl || `https://raw.githubusercontent.com/${repo.name}/main/assets/preview.png`,
+        readme: repo.readme
+      };
+    } catch (error) {
+      console.error('GitHub Project Detail API Error:', error);
+
+      // Return fallback data
+      return {
+        id: name,
+        title: name,
+        description: 'Unable to connect to GitHub API. Please check your backend server.',
         tags: ['Offline Mode', 'Fallback'],
         link: '#',
         readme: 'README content not available in offline mode.'

@@ -20,7 +20,7 @@ function App() {
       const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
       setIsMobile(isTouchDevice || isMobileUA);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -29,25 +29,25 @@ function App() {
   // Handle joystick movement
   const handleJoystickMove = useCallback((x: number, y: number) => {
     setJoystickInput({ x, y });
-    
+
     // Dispatch keyboard-like events for the Experience component
     const threshold = 0.3;
-    
+
     const forward = y > threshold;
     const backward = y < -threshold;
     const left = x < -threshold;
     const right = x > threshold;
-    
+
     // Create and dispatch custom events that Experience can listen to
-    window.dispatchEvent(new CustomEvent('joystickinput', { 
-      detail: { forward, backward, left, right } 
+    window.dispatchEvent(new CustomEvent('joystickinput', {
+      detail: { forward, backward, left, right }
     }));
   }, []);
 
   const handleJoystickEnd = useCallback(() => {
     setJoystickInput({ x: 0, y: 0 });
-    window.dispatchEvent(new CustomEvent('joystickinput', { 
-      detail: { forward: false, backward: false, left: false, right: false } 
+    window.dispatchEvent(new CustomEvent('joystickinput', {
+      detail: { forward: false, backward: false, left: false, right: false }
     }));
   }, []);
 
@@ -57,13 +57,13 @@ function App() {
       {/* 3D Canvas Layer */}
       <div className="absolute inset-0 z-0">
         <Suspense fallback={null}>
-          <Experience />
+          <Experience isMobile={isMobile} />
         </Suspense>
       </div>
 
       {/* UI Layer */}
-      <Navbar />
-      <FloatingCard />
+      <Navbar isMobile={isMobile} />
+      <FloatingCard isMobile={isMobile} />
 
       {/* Mobile Joystick - hidden during loading */}
       {isMobile && !isLoading && (

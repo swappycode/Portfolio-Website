@@ -8,8 +8,8 @@ import { GITHUB_TOKEN } from "../config/env.js";
 import gitRepoData, { githubUsername } from "../config/github.js";
 
 
- //Get list of portfolio projects from GitHub repositories
- // Filters repositories that are not forks and have "portfolio" topic
+//Get list of portfolio projects from GitHub repositories
+// Filters repositories that are not forks and have "portfolio" topic
 
 export const gList = async (req, res, next) => {
     try {
@@ -93,7 +93,7 @@ export const gDetail = async (req, res, next) => {
                 forks: repoData.forks_count,
                 githubUrl: repoData.html_url,
                 homepage: repoData.homepage,
-                imageUrl: `https://raw.githubusercontent.com/${githubUsername}/${repoName}/main/assets/preview.png`,
+                imageUrl: `https://raw.githubusercontent.com/${githubUsername}/${repoName}/${repoData.default_branch}/assets/preview.png`,
                 readme: readmeContent
             }
         });

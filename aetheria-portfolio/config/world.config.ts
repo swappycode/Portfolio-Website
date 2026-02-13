@@ -27,8 +27,9 @@ export const NPC_CONFIG: NPCData[] = [
       interval: 5,
     },
     dialogue: {
-      intro: "Hi! I represent the developer behind this world.",
-      details: "I'm a Frontend Specialist with a passion for 3D web experiences. I love React, Three.js, and creating performant UIs."
+      intro: "I’m a software and game engineer who enjoys building systems that sit at the intersection of performance, interactivity, and real-world usability.",
+      details: "I work across game development, graphics programming, and desktop/full-stack tools, with a strong preference for low-level, engine-first thinking. I care a lot about architecture, correctness, and building systems that are deterministic, debuggable, and designed to scale. My experience ranges from building custom game engines and physics simulations to creating responsive, high-performance web applications and developer tools.",
+      image: "/models/myimage.jpeg"
     }
   },
   {
@@ -56,8 +57,16 @@ export const NPC_CONFIG: NPCData[] = [
       name: ['jump', 'jump_idle', 'jump_land'],
     },
     dialogue: {
-      intro: "Looking for collaboration? Here's what I can offer.",
-      details: "Full Stack Development, 3D Web Integration, Performance Optimization, and Technical Consulting."
+      intro: "I offer specialized engineering services for high-performance and interactive applications.",
+      listItems: [
+        { title: "Technical Prototyping & MVP", desc: "End-to-end development of MVPs and technical demos. validating concepts with working software, clean architecture, and room for future scaling." },
+        { title: "Game Development", desc: "Unity/C#, Unreal Engine/C++, Godot, Custom Engines. Gameplay systems, physics, AI, and performance optimization." },
+
+        { title: "Graphics Programming", desc: "Shaders (HLSL/GLSL), Rendering Pipelines, procedural generation, and visual effects." },
+        { title: "Full-Stack & Tools", desc: "React, Node.js, C++, Python, Rust. Building editor tools, backend services, and interactive web apps." },
+        { title: "Full-Stack Prototyping", desc: "Rapid prototyping of real-time platforms using React, Node.js, and WebSockets." },
+        { title: "Systems Design", desc: "Optimization of algorithms, memory usage, and architecting maintainable, scalable codebases." }
+      ]
     }
   },
   {
@@ -71,8 +80,16 @@ export const NPC_CONFIG: NPCData[] = [
       name: 'duck',
     },
     dialogue: {
-      intro: "Ready to connect? Send a message.",
-      details: "email: dev@example.com | github: @devprofile | twitter: @devtweets"
+      intro: "If you’re building a game, a graphics-heavy system, or a tool that needs solid engineering, let's connect.",
+      links: [
+        { label: "Email", url: "mailto:swapnilsunilkakade@gmail.com", icon: "✉️" },
+        { label: "GitHub", url: "https://github.com/swappycode", icon: "💻" },
+        { label: "LinkedIn", url: "https://www.linkedin.com/in/swapnil-kakade/", icon: "gp" },
+        { label: "Itch.io", url: "https://swappycode.itch.io/", icon: "🎮" }
+      ],
+      resumes: [
+        { label: "SDE Resume", url: "/models/resumesoftwaredev.pdf" }
+      ]
     }
   }
 ];

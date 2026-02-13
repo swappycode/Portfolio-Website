@@ -14,9 +14,10 @@ import { distanceOnSphere, findClosestPointOnPaths, findPathWaypoints } from '..
 interface WorldProps {
   input: { forward: boolean; backward: boolean; left: boolean; right: boolean };
   onRotationVelocityChange?: (velocity: { x: number; y: number; z: number }) => void;
+  isMobile?: boolean; // Optional prop
 }
 
-export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange }) => {
+export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange, isMobile = false }) => {
   const worldRef = useRef<Group>(null);
 
   // Game State
@@ -34,10 +35,11 @@ export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange })
   }, [pathsData]);
 
   // Physics Constants
-  const SPEED = 0.02;
+  // Reduced speed for mobile joystick to control sensitivity (0.012 vs 0.02)
+  const SPEED = isMobile ? 0.012 : 0.02;
   const AUTO_WALK_ANGULAR_SPEED = 1.6; // Rad/sec for consistent, faster auto-walk
   const WAYPOINT_REACHED_ANGLE = 0.05; // Radians: how close before advancing waypoint
-  const AUTO_WALK_STOP_ANGLE = 0.12; // Radians: stop before NPC so dialog doesn't overlap
+  const AUTO_WALK_STOP_ANGLE = 0.11; // Radians: stop at ~1.5 units (standardized for PC/Mobile)
   const autoWalkWaypoints = useRef<Vector3[]>([]);
   const currentWaypointIndex = useRef(0);
   const targetPathPointRef = useRef<Vector3 | null>(null);

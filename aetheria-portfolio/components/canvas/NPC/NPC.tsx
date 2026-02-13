@@ -230,8 +230,8 @@ export const NPC: React.FC<NPCProps> = ({ data }) => {
   const { activeNPC, setActiveNPC, setDialogueOpen, isAutoWalking, dialogueOpen, setVisitedNPC } = useGameStore();
 
   // Constants
-  const INTERACTION_DIST = 4;
-  const EXIT_DIST = 5;
+  const INTERACTION_DIST = 1.8;
+  const EXIT_DIST = 3.0;
 
   useFrame((state) => {
     if (!groupRef.current) return;

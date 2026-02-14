@@ -6,6 +6,12 @@ export const PLAYER_SIZE = 0.25; // Character is now half the size
 export const CAMERA_DISTANCE = 1.6; // Slightly farther camera for better view
 export const CAMERA_HEIGHT = 11.3; // Higher camera to see full character
 
+export const MOVEMENT_CONFIG = {
+  WALK_SPEED_PC: 0.0067,
+  WALK_SPEED_MOBILE: 0.004,
+  AUTO_WALK_SPEED: 0.5333, // Rad/sec
+};
+
 // Helper to place items on sphere surface
 const getPositionOnSphere = (radius: number, theta: number, phi: number): [number, number, number] => {
   const x = radius * Math.sin(phi) * Math.cos(theta);

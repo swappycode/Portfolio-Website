@@ -6,6 +6,7 @@ import { FloatingCard } from './components/ui/FloatingCard';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { Joystick } from './components/ui/Joystick';
 import { BackgroundMusic } from './components/ui/BackgroundMusic';
+import { WelcomePanel } from './components/ui/WelcomePanel';
 
 function App() {
   const [isMobile, setIsMobile] = useState(false);
@@ -67,6 +68,7 @@ function App() {
       <BackgroundMusic isMobile={isMobile} />
       <Navbar isMobile={isMobile} />
       <FloatingCard isMobile={isMobile} />
+      {hasStarted && <WelcomePanel isMobile={isMobile} />}
 
       {/* Mobile Joystick - hidden during loading */}
       {isMobile && hasStarted && (

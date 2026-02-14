@@ -4,6 +4,8 @@ import { NPC_CONFIG, WORLD_RADIUS } from '../config/world.config';
 import { Quaternion, Vector3 } from 'three';
 
 interface GameStore extends GameState {
+  showWelcome: boolean;
+  setShowWelcome: (show: boolean) => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -13,7 +15,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   targetRotationQuaternion: null,
   dialogueOpen: false,
   projectCategory: 'SDE',
+  showWelcome: true, // Default to showing welcome panel
 
+  setShowWelcome: (show) => set({ showWelcome: show }),
   setActiveNPC: (id) => set({ activeNPC: id }),
 
   setVisitedNPC: (id) => set((state) => ({

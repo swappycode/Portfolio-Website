@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, Quaternion, Vector3 } from 'three';
 import { useGameStore } from '../../../store/gameStore';
-import { NPC_CONFIG, WORLD_RADIUS, CEL_SHADER_CONFIG } from '../../../config/world.config';
+import { NPC_CONFIG, WORLD_RADIUS, CEL_SHADER_CONFIG, MOVEMENT_CONFIG } from '../../../config/world.config';
 import { NPC } from '../NPC/NPC';
 import { Trees, Bushes, FallenTrees, DeadTrees, Rocks } from './Props';
 import { CelShaderMaterial } from './CelShaderMaterial';
@@ -36,8 +36,8 @@ export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange, i
 
   // Physics Constants
   // Reduced speed for mobile joystick to control sensitivity (0.012 vs 0.02)
-  const SPEED = isMobile ? 0.012 : 0.02;
-  const AUTO_WALK_ANGULAR_SPEED = 1.6; // Rad/sec for consistent, faster auto-walk
+  const SPEED = isMobile ? MOVEMENT_CONFIG.WALK_SPEED_MOBILE : MOVEMENT_CONFIG.WALK_SPEED_PC;
+  const AUTO_WALK_ANGULAR_SPEED = MOVEMENT_CONFIG.AUTO_WALK_SPEED; // Rad/sec for consistent, faster auto-walk
   const WAYPOINT_REACHED_ANGLE = 0.05; // Radians: how close before advancing waypoint
   const AUTO_WALK_STOP_ANGLE = 0.11; // Radians: stop at ~1.5 units (standardized for PC/Mobile)
   const autoWalkWaypoints = useRef<Vector3[]>([]);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { NPC_CONFIG } from '../../config/world.config';
-import { NPCRole, ProjectItem } from '../../types';
+import { NPCRole, ProjectItem, ServiceCategory, ServiceItem } from '../../types';
 import { ApiService } from '../../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -36,8 +36,50 @@ const RPG = {
 const TILT_MAX = 8;        // max degrees of tilt
 const GLARE_OPACITY = 0.12; // glare intensity
 
+const SERVICE_DATA: Record<ServiceCategory, ServiceItem[]> = {
+  SERVICES: [], // Populated from NPC config
+  ACHIEVEMENTS: [
+    {
+      id: "technex-2024",
+      title: "Technex Game Jam Winner — IIT BHU (2024)",
+      description: "Built a complete RTS game in 48 hours with AI, pathfinding, animation systems, and UI logic.",
+      details: [
+        "Designed resource systems, combat logic, and event-driven gameplay architecture.",
+        "Optimized game loops and ensured stable real-time performance.",
+        "First Place Winner in Game Development track."
+      ],
+      image: "/models/gamejampng.png"
+    },
+    {
+      id: "overnight-2024",
+      title: "Overnight Coding Finalist — IIT Kharagpur (2024)",
+      description: "Solved system-level and algorithmic problems using highly optimized C++.",
+      details: [
+        "Improved runtimes through multi-stage pruning and memoization.",
+        "Implemented bitwise optimization techniques for memory efficiency.",
+        "Finalist in competitive coding challenge."
+      ],
+      image: "/models/overnite.png"
+    }
+  ],
+  CERTIFICATIONS: [
+    {
+      id: "trendsetters-arvr",
+      title: "Game Development Using AR / VR",
+      description: "Trendsetters Infoservices - Process Design and Development",
+      details: [
+        "Developed marker-based and markerless AR/VR applications.",
+        "Hands-on experience in game, AR, and VR development workflows."
+      ],
+      image: "/models/arvrcertificate.jpeg"
+    }
+  ]
+};
+
+const CURSOR_STYLE = "url('/models/cursor.png'), auto";
+
 export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
-  const { activeNPC, dialogueOpen, projectCategory, setProjectCategory } = useGameStore();
+  const { activeNPC, dialogueOpen, projectCategory, setProjectCategory, serviceCategory, setServiceCategory } = useGameStore();
 
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +97,7 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
   const npc = NPC_CONFIG.find(n => n.id === activeNPC);
   const isProjects = npc?.role === NPCRole.PROJECTS;
+  const isServices = npc?.role === NPCRole.SERVICES;
 
   // ── Global mouse tracking — tilts even when cursor is outside the panel ──
   useEffect(() => {
@@ -241,7 +284,7 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         style={{
           position: 'relative',
           pointerEvents: 'auto',
-          width: isProjects ? 'min(880px, 90vw)' : 'min(500px, 88vw)',
+          width: isProjects ? 'min(880px, 90vw)' : 'min(720px, 90vw)',
           height: isProjects ? 'min(540px, 80vh)' : 'auto',
           maxHeight: '80vh',
           // 3D transform — smooth spring transition
@@ -266,6 +309,7 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column' as const,
+          cursor: CURSOR_STYLE,
         }}
       >
         {/* ── GLARE / SPECULAR REFLECTION — follows mouse ── */}
@@ -357,7 +401,7 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
           </div>
           <button onClick={closePanel} style={{
             background: 'rgba(200,160,80,0.08)', border: `1px solid ${RPG.borderSoft}`, borderRadius: '6px',
-            color: RPG.goldDim, cursor: 'pointer', padding: '5px 7px', display: 'flex', alignItems: 'center', transition: 'all 0.2s',
+            color: RPG.goldDim, cursor: CURSOR_STYLE, padding: '5px 7px', display: 'flex', alignItems: 'center', transition: 'all 0.2s',
           }}
             onMouseEnter={e => { e.currentTarget.style.color = RPG.goldBright; e.currentTarget.style.borderColor = 'rgba(200,160,80,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.color = RPG.goldDim; e.currentTarget.style.borderColor = RPG.borderSoft; }}
@@ -384,6 +428,14 @@ export const FloatingCard: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
               onCloseReadme={() => { playClick(); setShowReadme(false); }}
               onBack={() => { playClick(); setSelectedProject(null); }}
               npcColor={npc.color}
+              isMobile={isMobile}
+              playClick={playClick}
+            />
+          ) : isServices ? (
+            <ServicesView
+              npc={npc}
+              serviceCategory={serviceCategory}
+              setServiceCategory={(cat) => { playClick(); setServiceCategory(cat); }}
               isMobile={isMobile}
               playClick={playClick}
             />
@@ -852,6 +904,204 @@ const ProjectCard: React.FC<{
           boxShadow: '0 0 10px rgba(200,160,80,0.1)',
         }} />
       )}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Services View — Supports Services, Achievements, Certifications
+   ───────────────────────────────────────────── */
+interface ServicesViewProps {
+  npc: any;
+  serviceCategory: ServiceCategory;
+  setServiceCategory: (cat: ServiceCategory) => void;
+  isMobile: boolean;
+  playClick: () => void;
+}
+
+const ServicesView: React.FC<ServicesViewProps> = ({
+  npc, serviceCategory, setServiceCategory, isMobile, playClick
+}) => {
+  const [selectedItem, setSelectedItem] = useState<ServiceItem | null>(null);
+  const [showCertificate, setShowCertificate] = useState(false);
+
+  // Reset selection when changing tabs
+  useEffect(() => {
+    setSelectedItem(null);
+    setShowCertificate(false);
+  }, [serviceCategory]);
+
+  const items = serviceCategory === 'SERVICES'
+    ? (npc.dialogue.listItems?.map((item: any, i: number) => ({
+      id: `service-${i}`,
+      title: item.title,
+      description: item.desc
+    })) || [])
+    : SERVICE_DATA[serviceCategory];
+
+  const TabBtn = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+    <button onClick={onClick} style={{
+      padding: isMobile ? '4px 10px' : '10px 20px', fontSize: isMobile ? '11px' : '14px', fontWeight: 700, letterSpacing: '0.8px',
+      textTransform: 'uppercase' as const, borderRadius: '5px',
+      border: active ? '1px solid rgba(200,160,80,0.45)' : '1px solid rgba(200,160,80,0.1)',
+      background: active ? 'linear-gradient(180deg, rgba(200,160,80,0.18) 0%, rgba(200,160,80,0.06) 100%)' : 'transparent',
+      color: active ? RPG.goldBright : RPG.textDim, cursor: CURSOR_STYLE, transition: 'all 0.2s',
+      flex: isMobile ? 1 : 'initial', whiteSpace: 'nowrap'
+    }}>{label}</button>
+  );
+
+  const showList = (!isMobile || !selectedItem) && !showCertificate;
+  const showDetails = !!selectedItem;
+
+  return (
+    <div style={{ display: 'flex', width: '100%', minHeight: 0, overflow: 'hidden', flexDirection: 'column', userSelect: 'none', cursor: CURSOR_STYLE }}>
+
+      {/* ── TABS ── */}
+      <div style={{
+        display: 'flex', gap: '6px', padding: '10px 14px',
+        borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0,
+        overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none'
+      }}>
+        <TabBtn label="Services" active={serviceCategory === 'SERVICES'} onClick={() => setServiceCategory('SERVICES')} />
+        <TabBtn label="Achievements" active={serviceCategory === 'ACHIEVEMENTS'} onClick={() => setServiceCategory('ACHIEVEMENTS')} />
+        <TabBtn label="Certifications" active={serviceCategory === 'CERTIFICATIONS'} onClick={() => setServiceCategory('CERTIFICATIONS')} />
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+
+        {/* ── LIST / GRID VIEW ── */}
+        {showList && (
+          <div style={{
+            flex: (selectedItem && !isMobile) ? '0 0 50%' : '1',
+            display: 'flex', flexDirection: 'column',
+            borderRight: (selectedItem && !isMobile) ? `1px solid ${RPG.borderFaint}` : 'none',
+            overflow: 'auto', padding: '12px',
+            transition: 'flex 0.3s ease'
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile
+                ? '1fr'
+                : serviceCategory === 'SERVICES'
+                  ? 'repeat(2, 1fr)'
+                  : 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '10px'
+            }}>
+              {items.map((item: ServiceItem) => (
+                <div key={item.id}
+                  onClick={() => {
+                    if (serviceCategory !== 'SERVICES') {
+                      playClick(); setSelectedItem(item); setShowCertificate(false);
+                    }
+                  }}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: selectedItem?.id === item.id
+                      ? 'linear-gradient(180deg, rgba(200,160,80,0.14) 0%, rgba(200,160,80,0.04) 100%)'
+                      : 'linear-gradient(180deg, rgba(200,160,80,0.08) 0%, rgba(200,160,80,0.02) 100%)',
+                    border: selectedItem?.id === item.id
+                      ? '1px solid rgba(200,160,80,0.5)'
+                      : `1px solid ${RPG.borderFaint}`,
+                    cursor: CURSOR_STYLE, transition: 'all 0.2s',
+                    display: 'flex', flexDirection: 'column', gap: '4px'
+                  }}
+                >
+                  <h4 style={{ margin: 0, color: RPG.goldBright, fontSize: isMobile ? '13px' : '16px', fontWeight: 700 }}>{item.title}</h4>
+                  <p style={{ margin: 0, color: RPG.textDim, fontSize: isMobile ? '11px' : '14px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {item.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── DETAILS VIEW ── */}
+        {showDetails && selectedItem && (
+          <div style={{
+            flex: (isMobile || showCertificate) ? '1' : '0 0 50%',
+            display: 'flex', flexDirection: 'column',
+            minHeight: 0, overflow: 'hidden',
+            background: 'rgba(0,0,0,0.2)'
+          }}>
+            {/* Header / Back Button for Mobile */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 14px', borderBottom: `1px solid ${RPG.borderFaint}`, flexShrink: 0
+            }}>
+              <span style={{ color: RPG.goldBright, fontSize: '11px', fontWeight: 700 }}>
+                {showCertificate ? 'CERTIFICATE PREVIEW' : 'DETAILS'}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {showCertificate && (
+                  <button onClick={() => setShowCertificate(false)} style={{
+                    fontSize: '10px', color: RPG.gold, background: 'rgba(200,160,80,0.08)',
+                    border: `1px solid ${RPG.borderSoft}`, borderRadius: '4px', padding: '3px 10px', cursor: CURSOR_STYLE, fontWeight: 600,
+                  }}>Close Preview</button>
+                )}
+                <button onClick={() => { playClick(); setSelectedItem(null); }} style={{
+                  fontSize: '10px', color: RPG.gold, background: 'rgba(200,160,80,0.08)',
+                  border: `1px solid ${RPG.borderSoft}`, borderRadius: '4px', padding: '3px 10px', cursor: CURSOR_STYLE, fontWeight: 600,
+                }}>← Back</button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {showCertificate ? (
+                <div style={{ flex: 1, overflow: 'auto', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0c18' }}>
+                  {selectedItem.pdf ? (
+                    <iframe src={selectedItem.pdf} style={{ width: '100%', height: '100%', border: 'none', borderRadius: '4px' }} title="Certificate PDF" />
+                  ) : selectedItem.image ? (
+                    <img src={selectedItem.image} alt={selectedItem.title} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '4px', border: `1px solid ${RPG.borderFaint}` }} />
+                  ) : (
+                    <div style={{ color: RPG.textDim }}>No certificate file available.</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '24px', overflow: 'auto' }}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: isMobile ? '16px' : '22px', fontWeight: 700, color: RPG.goldBright, lineHeight: 1.4 }}>
+                    {selectedItem.title}
+                  </h3>
+                  <div style={{ marginBottom: '20px', fontSize: isMobile ? '13px' : '16px', lineHeight: 1.6, color: RPG.textBody }}>
+                    {selectedItem.description}
+                  </div>
+
+                  {selectedItem.details && (
+                    <div style={{ marginBottom: '20px' }}>
+                      {selectedItem.details.map((detail, i) => (
+                        <div key={i} style={{
+                          display: 'flex', gap: '8px', marginBottom: '8px',
+                          fontSize: isMobile ? '12px' : '15px', lineHeight: 1.6, color: RPG.textMuted
+                        }}>
+                          <span style={{ color: RPG.goldDim }}>•</span>
+                          <span>{detail}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {(selectedItem.image || selectedItem.pdf) && (
+                    <button
+                      onClick={() => { playClick(); setShowCertificate(true); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '10px 16px', width: '100%', justifyContent: 'center',
+                        background: `linear-gradient(180deg, ${RPG.gold} 0%, ${RPG.goldDim} 100%)`,
+                        border: 'none', borderRadius: '6px',
+                        color: '#1a1520', fontSize: '13px', fontWeight: 700,
+                        cursor: CURSOR_STYLE, boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>📜</span> View Certificate
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

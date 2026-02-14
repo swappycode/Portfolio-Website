@@ -35,8 +35,7 @@ export const WelcomePanel: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             audioRef.current.currentTime = 0;
             audioRef.current.play().catch(() => { });
         }
-        setAnimateIn(false);
-        setTimeout(() => setShowWelcome(false), 300);
+        setShowWelcome(false);
     };
 
     if (!showWelcome) return null;

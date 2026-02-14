@@ -15,6 +15,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   targetRotationQuaternion: null,
   dialogueOpen: false,
   projectCategory: 'SDE',
+  serviceCategory: 'SERVICES',
   showWelcome: true, // Default to showing welcome panel
 
   setShowWelcome: (show) => set({ showWelcome: show }),
@@ -45,5 +46,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setDialogueOpen: (isOpen) => set({ dialogueOpen: isOpen }),
 
-  setProjectCategory: (category) => set({ projectCategory: category })
+  setProjectCategory: (category) => set({ projectCategory: category }),
+  setServiceCategory: (category) => set({ serviceCategory: category })
 }));

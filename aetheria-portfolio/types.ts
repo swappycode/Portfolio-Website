@@ -111,6 +111,7 @@ export interface GameState {
   // Interaction
   dialogueOpen: boolean;
   projectCategory: ProjectCategory;
+  serviceCategory: ServiceCategory;
 
   // Actions
   setActiveNPC: (id: string | null) => void;
@@ -119,7 +120,22 @@ export interface GameState {
   cancelAutoWalk: () => void;
   setDialogueOpen: (isOpen: boolean) => void;
   setProjectCategory: (category: ProjectCategory) => void;
+  setServiceCategory: (category: ServiceCategory) => void;
 }
+
+export type ServiceCategory = 'SERVICES' | 'ACHIEVEMENTS' | 'CERTIFICATIONS';
+
+export interface ServiceItem {
+  id: string;
+  title: string;
+  description: string;
+  date?: string;
+  details?: string[];
+  image?: string; // For certificates
+  pdf?: string;   // For achievements
+  link?: string;
+}
+
 
 declare global {
   namespace JSX {

@@ -1,5 +1,6 @@
 import React, { Suspense, useState, useEffect, useCallback } from 'react';
 import { useProgress } from '@react-three/drei';
+import { useGameStore } from './store/gameStore';
 import { Experience } from './components/canvas/Experience';
 import { Navbar } from './components/ui/Navbar';
 import { FloatingCard } from './components/ui/FloatingCard';
@@ -54,6 +55,8 @@ function App() {
     }));
   }, []);
 
+  const { showWelcome } = useGameStore();
+
   return (
     <div className="w-full h-screen relative bg-blue-50 overflow-hidden">
 
@@ -70,8 +73,8 @@ function App() {
       <FloatingCard isMobile={isMobile} />
       {hasStarted && <WelcomePanel isMobile={isMobile} />}
 
-      {/* Mobile Joystick - hidden during loading */}
-      {isMobile && hasStarted && (
+      {/* Mobile Joystick - hidden during loading OR when welcome panel is open */}
+      {isMobile && hasStarted && !showWelcome && (
         <Joystick onMove={handleJoystickMove} onEnd={handleJoystickEnd} />
       )}
 

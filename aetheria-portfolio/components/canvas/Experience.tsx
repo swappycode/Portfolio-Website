@@ -30,19 +30,29 @@ function InputHandler({ setInput }: { setInput: (i: InputState) => void }) {
   useEffect(() => {
     const handleDown = (e: KeyboardEvent) => {
       let changed = false;
-      if ((e.key === 'w' || e.key === 'ArrowUp') && !keysRef.current.forward) {
+      const key = e.key;
+      const isMovementKey = key === 'w' || key === 'ArrowUp' ||
+        key === 's' || key === 'ArrowDown' ||
+        key === 'a' || key === 'ArrowLeft' ||
+        key === 'd' || key === 'ArrowRight';
+
+      if (isMovementKey) {
+        e.preventDefault();
+      }
+
+      if ((key === 'w' || key === 'ArrowUp') && !keysRef.current.forward) {
         keysRef.current.forward = true;
         changed = true;
       }
-      if ((e.key === 's' || e.key === 'ArrowDown') && !keysRef.current.backward) {
+      if ((key === 's' || key === 'ArrowDown') && !keysRef.current.backward) {
         keysRef.current.backward = true;
         changed = true;
       }
-      if ((e.key === 'a' || e.key === 'ArrowLeft') && !keysRef.current.left) {
+      if ((key === 'a' || key === 'ArrowLeft') && !keysRef.current.left) {
         keysRef.current.left = true;
         changed = true;
       }
-      if ((e.key === 'd' || e.key === 'ArrowRight') && !keysRef.current.right) {
+      if ((key === 'd' || key === 'ArrowRight') && !keysRef.current.right) {
         keysRef.current.right = true;
         changed = true;
       }
@@ -75,14 +85,28 @@ function InputHandler({ setInput }: { setInput: (i: InputState) => void }) {
       setInput({ ...e.detail });
     };
 
+    const handleBlur = () => {
+      keysRef.current = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false
+      };
+      setInput({ ...keysRef.current });
+    };
+
     window.addEventListener('keydown', handleDown);
     window.addEventListener('keyup', handleUp);
     window.addEventListener('joystickinput' as any, handleJoystickInput);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('contextmenu', handleBlur);
 
     return () => {
       window.removeEventListener('keydown', handleDown);
       window.removeEventListener('keyup', handleUp);
       window.removeEventListener('joystickinput' as any, handleJoystickInput);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('contextmenu', handleBlur);
     };
   }, [setInput]);
   return null;

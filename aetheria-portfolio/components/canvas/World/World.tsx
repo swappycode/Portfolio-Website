@@ -156,10 +156,10 @@ export const World: React.FC<WorldProps> = ({ input, onRotationVelocityChange, i
       const zAxis = new Vector3(0, 0, 1);
       const moveQ = new Quaternion();
 
-      if (input.forward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, SPEED));
-      if (input.backward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, -SPEED));
-      if (input.left) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, -SPEED));
-      if (input.right) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, SPEED));
+      if (input.forward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, SPEED * delta));
+      if (input.backward) moveQ.multiply(new Quaternion().setFromAxisAngle(xAxis, -SPEED * delta));
+      if (input.left) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, -SPEED * delta));
+      if (input.right) moveQ.multiply(new Quaternion().setFromAxisAngle(zAxis, SPEED * delta));
 
       if (input.forward || input.backward || input.left || input.right) {
         worldRef.current.quaternion.multiplyQuaternions(moveQ, currentQ);

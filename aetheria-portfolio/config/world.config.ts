@@ -7,9 +7,9 @@ export const CAMERA_DISTANCE = 1.6; // Slightly farther camera for better view
 export const CAMERA_HEIGHT = 11.3; // Higher camera to see full character
 
 export const MOVEMENT_CONFIG = {
-  WALK_SPEED_PC: 0.0067,
-  WALK_SPEED_MOBILE: 0.004,
-  AUTO_WALK_SPEED: 0.5333, // Rad/sec (Reduced)
+  WALK_SPEED_PC: 0.32,
+  WALK_SPEED_MOBILE: 0.2,
+  AUTO_WALK_SPEED: 0.45, // Rad/sec (Reduced)
   AUTO_WALK_STOP_ANGLE: 0.105, // Radians: stop at ~1.5 units
 };
 
